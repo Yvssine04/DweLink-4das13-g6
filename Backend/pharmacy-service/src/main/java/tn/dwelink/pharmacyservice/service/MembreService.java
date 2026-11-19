@@ -11,6 +11,7 @@ import tn.dwelink.pharmacyservice.entity.MembrePharmacie;
 import tn.dwelink.pharmacyservice.entity.Pharmacie;
 import tn.dwelink.pharmacyservice.enums.RoleMembre;
 import tn.dwelink.pharmacyservice.enums.StatutMembre;
+import tn.dwelink.pharmacyservice.enums.StatutPharmacie;
 import tn.dwelink.pharmacyservice.evenement.DemandeRattachementCreee;
 import tn.dwelink.pharmacyservice.evenement.MembresPharmacieModifies;
 import tn.dwelink.pharmacyservice.evenement.PublicateurEvenements;
@@ -84,6 +85,23 @@ public class MembreService {
         }
         pharmacie.getMembres().remove(membre);
         publierChangement(pharmacieId, membre, TypeChangementMembre.RETIRE);
+    }
+
+    /**
+     * Compte suspendu dans user-service : l'utilisateur perd ses rattachements (hors titulaire)
+     * et les pharmacies dont il est titulaire passent en SUSPENDUE.
+     */
+    public void suspendreUtilisateur(Long utilisateurId) {
+        List<MembrePharmacie> lignes = membreRepository.findByUtilisateurId(utilisateurId);
+        for (MembrePharmacie membre : lignes) {
+            Pharmacie pharmacie = membre.getPharmacie();
+            if (membre.getRole() == RoleMembre.TITULAIRE) {
+                pharmacieService.changerStatut(pharmacie.getId(), StatutPharmacie.SUSPENDUE);
+            } else {
+                pharmacie.getMembres().remove(membre);
+                publierChangement(pharmacie.getId(), membre, TypeChangementMembre.RETIRE);
+            }
+        }
     }
 
     @Transactional(readOnly = true)
