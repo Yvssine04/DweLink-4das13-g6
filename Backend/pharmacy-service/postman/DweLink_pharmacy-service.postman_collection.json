@@ -1,0 +1,723 @@
+{
+  "info": {
+    "name": "DweLink - pharmacy-service",
+    "description": "Tests manuels du microservice Gestion des pharmacies (port 8082). X-Utilisateur-Id simule l'utilisateur connecté.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "pharmacieId",
+      "value": "1"
+    },
+    {
+      "key": "membreId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Pharmacies",
+      "item": [
+        {
+          "name": "Créer une pharmacie (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "description": "Le créateur (utilisateur 1) devient TITULAIRE ACTIF. Statut EN_ATTENTE. Relancer = 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Créer avec nom vide (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"\",\n  \"numeroAutorisation\": \"AUT-101\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consulter (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Consulter inexistante (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "999"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Modifier par le titulaire (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 222 222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Modifier par un autre (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "2"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Valider (admin) (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "statut"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Horaires et gardes",
+      "item": [
+        {
+          "name": "Définir les horaires (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "horaires"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"jour\": \"LUNDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"20:00\"\n  },\n  {\n    \"jour\": \"SAMEDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"13:00\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Horaire fermeture avant ouverture (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "horaires"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"jour\": \"MARDI\",\n    \"heureOuverture\": \"20:00\",\n    \"heureFermeture\": \"08:00\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Ajouter une garde (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "description": "Changer les dates pour qu'elle soit en cours maintenant.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-11-19T18:00:00\",\n  \"fin\": \"2026-11-20T08:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Garde qui chevauche (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-11-19T22:00:00\",\n  \"fin\": \"2026-11-20T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Recherche (publique)",
+      "item": [
+        {
+          "name": "Par ville (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies?ville=tunis",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "ville",
+                  "value": "tunis"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "De garde maintenant (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies?deGarde=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "deGarde",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Proches (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.8&lng=10.18&rayonKm=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "proches"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "36.8"
+                },
+                {
+                  "key": "lng",
+                  "value": "10.18"
+                },
+                {
+                  "key": "rayonKm",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Proches sans lng (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.8",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "proches"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "36.8"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Membres",
+      "item": [
+        {
+          "name": "Demander à rejoindre (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "5"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            },
+            "description": "L'utilisateur 5 devient ASSISTANT EN_ATTENTE. Noter l'id renvoyé et le mettre dans la variable membreId."
+          }
+        },
+        {
+          "name": "Lister les membres (titulaire) (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Accepter (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "{{membreId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"ACTIF\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Accepter par un non-titulaire (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "2"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "{{membreId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"ACTIF\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Vérifier un membre (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/verifier?utilisateurId=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "verifier"
+              ],
+              "query": [
+                {
+                  "key": "utilisateurId",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Retirer un membre (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "{{membreId}}"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Santé",
+      "item": [
+        {
+          "name": "Actuator health (UP)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    }
+  ]
+}
