@@ -41,16 +41,43 @@ Angular · Spring Boot · Spring Cloud (Gateway, Eureka, Config Server) · Keycl
 
 ```
 DweLink-4das13-g6/
-├── Backend/              microservices Spring Boot
-├── Frontend/             application Angular
+├── Backend/                      un dossier par microservice Spring Boot
+│   ├── user-service/
+│   ├── pharmacy-service/
+│   ├── catalog-service/
+│   ├── inventory-service/
+│   ├── reservation-service/
+│   ├── donation-service/
+│   └── notification-service/
+├── Frontend/                     application Angular
 ├── Documentation/
-│   ├── Presentation/     présentation de la séance 4
-│   ├── Diagrams/         diagramme d'architecture et diagrammes UML
+│   ├── Presentation/
+│   │   ├── DweLink_Presentation.pdf
+│   │   └── DweLink_Rapport.pdf
+│   ├── Diagrams/                 diagrammes de classes (01 à 07)
 │   └── logo.png
+├── .gitignore
 └── README.md
 ```
 
+## Documentation
+
+- **Rapport de conception** : [DweLink_Rapport.pdf](Documentation/Presentation/DweLink_Rapport.pdf)
+- **Présentation** : [DweLink_Presentation.pdf](Documentation/Presentation/DweLink_Presentation.pdf)
+- **Diagrammes de classes** : [Documentation/Diagrams](Documentation/Diagrams)
+
 ## Organisation
 
-- Une branche par fonctionnalité, fusion par pull request.
+- Une branche par microservice : `feature/<nom>-service` (exemple : `feature/pharmacy-service`).
+- Fusion dans `main` par pull request, après relecture.
+- Messages de commit clairs, en français (exemple : `feat(pharmacy): ajout de l'entité Pharmacie`).
+- Les fichiers d'IDE (`.idea/`, `.vscode/`), les dossiers `target/` et `node_modules/` ne sont pas envoyés (voir `.gitignore`).
 - Suivi des tâches avec GitHub Projects.
+
+## Lancement
+
+À venir : le projet est en phase de conception. Commande prévue :
+
+```bash
+docker compose up
+```
