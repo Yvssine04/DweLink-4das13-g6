@@ -15,23 +15,37 @@ import tn.dwelink.pharmacyservice.config.RabbitConfig;
 public class PublicateurEvenements {
 
     public static final String CLE_STATUT_PHARMACIE_MODIFIE = "pharmacie.statut.modifie";
+    public static final String CLE_RATTACHEMENT_CREE = "pharmacie.rattachement.cree";
+    public static final String CLE_MEMBRES_MODIFIES = "pharmacie.membres.modifies";
 
     private final RabbitTemplate rabbitTemplate;
 
+    public void publierStatutPharmacieModifie(StatutPharmacieModifie evenement) {
+        publierApresCommit(CLE_STATUT_PHARMACIE_MODIFIE, evenement);
+    }
+
+    public void publierDemandeRattachementCreee(DemandeRattachementCreee evenement) {
+        publierApresCommit(CLE_RATTACHEMENT_CREE, evenement);
+    }
+
+    public void publierMembresPharmacieModifies(MembresPharmacieModifies evenement) {
+        publierApresCommit(CLE_MEMBRES_MODIFIES, evenement);
+    }
+
     /**
-     * Publie l'événement. Si une transaction est en cours, l'envoi a lieu après son commit,
+     * Si une transaction est en cours, l'envoi a lieu après son commit,
      * pour ne jamais annoncer un changement qui n'a pas été enregistré.
      */
-    public void publierStatutPharmacieModifie(StatutPharmacieModifie evenement) {
+    private void publierApresCommit(String cleRoutage, Object evenement) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    envoyer(CLE_STATUT_PHARMACIE_MODIFIE, evenement);
+                    envoyer(cleRoutage, evenement);
                 }
             });
         } else {
-            envoyer(CLE_STATUT_PHARMACIE_MODIFIE, evenement);
+            envoyer(cleRoutage, evenement);
         }
     }
 

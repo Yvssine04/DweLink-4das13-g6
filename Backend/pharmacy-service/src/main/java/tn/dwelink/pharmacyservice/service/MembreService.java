@@ -1,5 +1,6 @@
 package tn.dwelink.pharmacyservice.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,10 @@ import tn.dwelink.pharmacyservice.entity.MembrePharmacie;
 import tn.dwelink.pharmacyservice.entity.Pharmacie;
 import tn.dwelink.pharmacyservice.enums.RoleMembre;
 import tn.dwelink.pharmacyservice.enums.StatutMembre;
+import tn.dwelink.pharmacyservice.evenement.DemandeRattachementCreee;
+import tn.dwelink.pharmacyservice.evenement.MembresPharmacieModifies;
+import tn.dwelink.pharmacyservice.evenement.PublicateurEvenements;
+import tn.dwelink.pharmacyservice.evenement.TypeChangementMembre;
 import tn.dwelink.pharmacyservice.exception.ConflitException;
 import tn.dwelink.pharmacyservice.exception.RequeteInvalideException;
 import tn.dwelink.pharmacyservice.exception.RessourceIntrouvableException;
@@ -22,6 +27,7 @@ public class MembreService {
 
     private final PharmacieService pharmacieService;
     private final MembrePharmacieRepository membreRepository;
+    private final PublicateurEvenements publicateurEvenements;
 
     public MembreResponse demander(Long pharmacieId, Long utilisateurId) {
         Pharmacie pharmacie = pharmacieService.charger(pharmacieId);
@@ -33,6 +39,7 @@ public class MembreService {
             }
             existant.setStatut(StatutMembre.EN_ATTENTE);
             existant.setRole(RoleMembre.ASSISTANT);
+            publierDemande(pharmacie, existant);
             return MembreResponse.from(existant);
         }
         MembrePharmacie membre = MembrePharmacie.builder()
@@ -42,7 +49,9 @@ public class MembreService {
                 .pharmacie(pharmacie)
                 .build();
         pharmacie.getMembres().add(membre);
-        return MembreResponse.from(membreRepository.save(membre));
+        MembrePharmacie enregistre = membreRepository.save(membre);
+        publierDemande(pharmacie, enregistre);
+        return MembreResponse.from(enregistre);
     }
 
     public MembreResponse decider(Long pharmacieId, Long membreId, StatutMembre decision, Long appelantId) {
@@ -55,7 +64,14 @@ public class MembreService {
         if (membre.getStatut() != StatutMembre.EN_ATTENTE) {
             throw new ConflitException("Cette demande a déjà été traitée (statut actuel : " + membre.getStatut() + ")");
         }
+        StatutMembre ancienStatut = membre.getStatut();
         membre.setStatut(decision);
+        if (ancienStatut != decision) {
+            TypeChangementMembre changement = decision == StatutMembre.ACTIF
+                    ? TypeChangementMembre.ACCEPTE
+                    : TypeChangementMembre.REFUSE;
+            publierChangement(pharmacieId, membre, changement);
+        }
         return MembreResponse.from(membre);
     }
 
@@ -67,6 +83,7 @@ public class MembreService {
             throw new ConflitException("Impossible de retirer le titulaire : une pharmacie doit toujours en avoir un");
         }
         pharmacie.getMembres().remove(membre);
+        publierChangement(pharmacieId, membre, TypeChangementMembre.RETIRE);
     }
 
     @Transactional(readOnly = true)
@@ -83,6 +100,16 @@ public class MembreService {
         Pharmacie pharmacie = pharmacieService.charger(pharmacieId);
         pharmacieService.verifierTitulaire(pharmacieId, appelantId);
         return pharmacie.getMembres().stream().map(MembreResponse::from).toList();
+    }
+
+    private void publierDemande(Pharmacie pharmacie, MembrePharmacie membre) {
+        publicateurEvenements.publierDemandeRattachementCreee(new DemandeRattachementCreee(
+                pharmacie.getId(), pharmacie.getNom(), membre.getId(), membre.getUtilisateurId(), LocalDateTime.now()));
+    }
+
+    private void publierChangement(Long pharmacieId, MembrePharmacie membre, TypeChangementMembre changement) {
+        publicateurEvenements.publierMembresPharmacieModifies(new MembresPharmacieModifies(
+                pharmacieId, membre.getId(), membre.getUtilisateurId(), changement, LocalDateTime.now()));
     }
 
     private MembrePharmacie chargerMembre(Long pharmacieId, Long membreId) {
