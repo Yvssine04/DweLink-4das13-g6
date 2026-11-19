@@ -25,8 +25,15 @@ public class MembreService {
 
     public MembreResponse demander(Long pharmacieId, Long utilisateurId) {
         Pharmacie pharmacie = pharmacieService.charger(pharmacieId);
-        if (membreRepository.findByPharmacieIdAndUtilisateurId(pharmacieId, utilisateurId).isPresent()) {
-            throw new ConflitException("Cet utilisateur est déjà membre de cette pharmacie (ou a déjà fait une demande)");
+        MembrePharmacie existant = membreRepository.findByPharmacieIdAndUtilisateurId(pharmacieId, utilisateurId)
+                .orElse(null);
+        if (existant != null) {
+            if (existant.getStatut() != StatutMembre.REFUSE) {
+                throw new ConflitException("Cet utilisateur est déjà membre de cette pharmacie (ou a déjà fait une demande)");
+            }
+            existant.setStatut(StatutMembre.EN_ATTENTE);
+            existant.setRole(RoleMembre.ASSISTANT);
+            return MembreResponse.from(existant);
         }
         MembrePharmacie membre = MembrePharmacie.builder()
                 .utilisateurId(utilisateurId)
