@@ -21,3 +21,12 @@ spring.rabbitmq.host=localhost
 spring.rabbitmq.port=5672
 spring.rabbitmq.username=guest
 spring.rabbitmq.password=guest
+
+# user-service (OpenFeign)
+# Pour l'instant sans Eureka : URL fixe. Plus tard, on supprimera cette URL et Feign
+# résoudra le nom "user-service" via Eureka.
+services.utilisateur.url=http://localhost:8081
+spring.cloud.openfeign.client.config.utilisateurService.connect-timeout=2000
+spring.cloud.openfeign.client.config.utilisateurService.read-timeout=3000
+# Circuit breaker Resilience4j "utilisateurService" sur le client Feign (réglages dans ResilienceConfig)
+spring.cloud.openfeign.circuitbreaker.enabled=true

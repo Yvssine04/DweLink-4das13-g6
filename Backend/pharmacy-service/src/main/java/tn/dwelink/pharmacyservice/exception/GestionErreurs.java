@@ -38,6 +38,11 @@ public class GestionErreurs {
         return reponse(HttpStatus.BAD_REQUEST, e.getMessage(), null);
     }
 
+    @ExceptionHandler(ServiceIndisponibleException.class)
+    public ResponseEntity<Map<String, Object>> serviceIndisponible(ServiceIndisponibleException e) {
+        return reponse(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), null);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> validation(MethodArgumentNotValidException e) {
         Map<String, String> champs = new LinkedHashMap<>();
