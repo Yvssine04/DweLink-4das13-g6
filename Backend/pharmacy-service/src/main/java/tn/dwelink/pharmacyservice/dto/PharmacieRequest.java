@@ -4,12 +4,26 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record PharmacieRequest(
-        @NotBlank @Size(max = 120) String nom,
-        @NotBlank @Size(max = 30) String numeroAutorisation,
-        @Size(max = 200) String adresse,
-        @NotBlank @Size(max = 60) String ville,
+        @NotBlank(message = "Le nom est obligatoire")
+        @Size(max = 120, message = "Le nom ne doit pas dépasser 120 caractères")
+        String nom,
+
+        @NotBlank(message = "Le numéro d'autorisation est obligatoire")
+        @Size(max = 30, message = "Le numéro d'autorisation ne doit pas dépasser 30 caractères")
+        String numeroAutorisation,
+
+        @Size(max = 200, message = "L'adresse ne doit pas dépasser 200 caractères")
+        String adresse,
+
+        @NotBlank(message = "La ville est obligatoire")
+        @Size(max = 60, message = "La ville ne doit pas dépasser 60 caractères")
+        String ville,
+
         Double latitude,
+
         Double longitude,
-        @Size(max = 20) String telephone
+
+        @Size(max = 20, message = "Le téléphone ne doit pas dépasser 20 caractères")
+        String telephone
 ) {
 }
