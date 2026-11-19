@@ -14,6 +14,7 @@ import tn.dwelink.catalogservice.repository.MedicamentRepository;
 import tn.dwelink.catalogservice.repository.PrincipeActifRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -258,6 +259,21 @@ public class MedicamentService implements IMedicamentService {
             }
         }
         return true;
+    }
+
+    @Override
+    @Transactional
+    public MedicamentResponse retirer(Long id) {
+        Medicament medicament = trouver(id);
+
+        if (medicament.getStatut() == StatutMedicament.RETIRE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Médicament déjà retiré");
+        }
+        medicament.setStatut(StatutMedicament.RETIRE);
+        medicament.setDateRetrait(LocalDate.now());
+
+        // TODO  : publier l'événement RabbitMQ "MedicamentRetire"
+        return versResponse(medicament);
     }
 
     private Medicament trouver(Long id) {

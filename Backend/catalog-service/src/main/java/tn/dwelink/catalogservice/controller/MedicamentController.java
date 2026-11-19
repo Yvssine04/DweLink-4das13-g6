@@ -57,4 +57,9 @@ public class MedicamentController {
     public List<MedicamentResponse> equivalents(@PathVariable Long id) {
         return service.equivalents(id);
     }
+
+    @PatchMapping("/{id}/retrait")
+    public MedicamentResponse retirer(@PathVariable Long id) {
+        return service.retirer(id);
+    }
 }

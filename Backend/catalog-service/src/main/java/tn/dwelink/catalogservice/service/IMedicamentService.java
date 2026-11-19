@@ -20,4 +20,6 @@ public interface IMedicamentService {
     void supprimerComposition(Long id, Long compositionId);
 
     List<MedicamentResponse> equivalents(Long id);
+
+    MedicamentResponse retirer(Long id);
 }
