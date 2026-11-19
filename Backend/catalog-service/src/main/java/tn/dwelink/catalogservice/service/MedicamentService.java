@@ -9,6 +9,7 @@ import tn.dwelink.catalogservice.dto.*;
 import tn.dwelink.catalogservice.entity.CompositionMedicament;
 import tn.dwelink.catalogservice.entity.Medicament;
 import tn.dwelink.catalogservice.entity.PrincipeActif;
+import tn.dwelink.catalogservice.enums.StatutMedicament;
 import tn.dwelink.catalogservice.repository.MedicamentRepository;
 import tn.dwelink.catalogservice.repository.PrincipeActifRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,9 +83,7 @@ public class MedicamentService implements IMedicamentService {
     @Override
     @Transactional(readOnly = true)
     public MedicamentResponse consulter(Long id) {
-        Medicament medicament = medicamentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Médicament introuvable"));
+        Medicament medicament = trouver(id);
         return versResponse(medicament);
     }
 
@@ -143,10 +142,7 @@ public class MedicamentService implements IMedicamentService {
     @Transactional
     public MedicamentResponse modifier(Long id, MedicamentUpdateRequest request) {
 
-        Medicament medicament = medicamentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Médicament introuvable"
-                ));
+        Medicament medicament = trouver(id);
 
         if (medicamentRepository.existsByCodeBarresAndIdNot(
                 request.codeBarres(), id)) {
@@ -181,10 +177,7 @@ public class MedicamentService implements IMedicamentService {
     @Override
     @Transactional
     public MedicamentResponse ajouterComposition(Long id, CompositionRequest request) {
-        Medicament medicament = medicamentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Médicament introuvable"
-                ));
+        Medicament medicament = trouver(id);
 
         PrincipeActif principeActif = principeActifRepository.findById(request.principeActifId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -212,10 +205,7 @@ public class MedicamentService implements IMedicamentService {
     @Override
     @Transactional
     public void supprimerComposition(Long id, Long compositionId) {
-        Medicament medicament = medicamentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Médicament introuvable"
-                ));
+        Medicament medicament = trouver(id);
 
         CompositionMedicament aSupprimer = null;
         for (CompositionMedicament c : medicament.getCompositions()) {
@@ -233,4 +223,46 @@ public class MedicamentService implements IMedicamentService {
         medicament.getCompositions().remove(aSupprimer);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicamentResponse> equivalents(Long id) {
+        Medicament origine = trouver(id);
+        List<MedicamentResponse> resultat = new ArrayList<>();
+
+        List<Medicament> candidats = medicamentRepository.findByFormeAndStatutAndIdNot(
+                origine.getForme(), StatutMedicament.ACTIF, id);
+
+        for (Medicament candidat : candidats) {
+            if (memeComposition(origine, candidat)) {
+                resultat.add(versResponse(candidat));
+            }
+        }
+        return resultat;
+    }
+
+    private boolean memeComposition(Medicament a, Medicament b) {
+        if (a.getCompositions().size() != b.getCompositions().size()) {
+            return false;
+        }
+        for (CompositionMedicament ca : a.getCompositions()) {
+            boolean trouve = false;
+            for (CompositionMedicament cb : b.getCompositions()) {
+                if (ca.getPrincipeActif().getId().equals(cb.getPrincipeActif().getId())
+                        && ca.getDosage().equals(cb.getDosage())
+                        && ca.getUnite().equalsIgnoreCase(cb.getUnite())) {
+                    trouve = true;
+                }
+            }
+            if (!trouve) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Medicament trouver(Long id) {
+        return medicamentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Médicament introuvable"));
+    }
 }

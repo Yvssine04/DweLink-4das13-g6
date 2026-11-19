@@ -18,4 +18,6 @@ public interface IMedicamentService {
     MedicamentResponse ajouterComposition(Long id, CompositionRequest request);
 
     void supprimerComposition(Long id, Long compositionId);
+
+    List<MedicamentResponse> equivalents(Long id);
 }

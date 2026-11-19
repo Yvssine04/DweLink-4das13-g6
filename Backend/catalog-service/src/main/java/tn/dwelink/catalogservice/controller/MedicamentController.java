@@ -52,4 +52,9 @@ public class MedicamentController {
     public void supprimerComposition(@PathVariable Long id, @PathVariable Long compositionId) {
         service.supprimerComposition(id, compositionId);
     }
+
+    @GetMapping("/{id}/equivalents")
+    public List<MedicamentResponse> equivalents(@PathVariable Long id) {
+        return service.equivalents(id);
+    }
 }
