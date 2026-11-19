@@ -1,6 +1,7 @@
 package tn.dwelink.catalogservice.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,7 +14,7 @@ import tn.dwelink.catalogservice.entity.Medicament;
 import tn.dwelink.catalogservice.entity.PrincipeActif;
 import tn.dwelink.catalogservice.repository.MedicamentRepository;
 import tn.dwelink.catalogservice.repository.PrincipeActifRepository;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +70,7 @@ public class MedicamentService implements IMedicamentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public MedicamentResponse consulter(Long id) {
         Medicament medicament = medicamentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -94,5 +96,36 @@ public class MedicamentService implements IMedicamentService {
                 m.getOrdonnanceRequise(), m.getConditionConservation(), m.getStupefiant(),
                 m.getStatut(), m.getDateRetrait(), m.getCategorie(), m.getLaboratoire(),
                 compositions);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicamentResponse> rechercher(String q, String categorie, String laboratoire) {
+        List<Medicament> medicaments = medicamentRepository.findAll(Sort.by("nomCommercial"));
+        List<MedicamentResponse> resultat = new ArrayList<>();
+
+        for (Medicament m : medicaments) {
+            boolean ok = true;
+
+            if (q != null && !q.isBlank()
+                    && !m.getNomCommercial().toLowerCase().contains(q.trim().toLowerCase())) {
+                ok = false;
+            }
+            if (categorie != null && !categorie.isBlank()
+                    && (m.getCategorie() == null
+                    || !m.getCategorie().equalsIgnoreCase(categorie.trim()))) {
+                ok = false;
+            }
+            if (laboratoire != null && !laboratoire.isBlank()
+                    && (m.getLaboratoire() == null
+                    || !m.getLaboratoire().equalsIgnoreCase(laboratoire.trim()))) {
+                ok = false;
+            }
+
+            if (ok) {
+                resultat.add(versResponse(m));
+            }
+        }
+        return resultat;
     }
 }
