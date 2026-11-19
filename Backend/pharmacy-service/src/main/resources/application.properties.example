@@ -1,0 +1,17 @@
+# Copier ce fichier en application.properties et mettre votre mot de passe PostgreSQL.
+spring.application.name=pharmacy-service
+
+server.port=8082
+
+# PostgreSQL
+spring.datasource.url=jdbc:postgresql://localhost:5432/pharmacie_db
+spring.datasource.username=postgres
+spring.datasource.password=CHANGE_ME
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.open-in-view=false
+spring.jpa.show-sql=true
+
+# Actuator
+management.endpoints.web.exposure.include=health

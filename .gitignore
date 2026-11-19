@@ -19,3 +19,6 @@ Thumbs.db
 
 # Secrets
 .env
+
+# Configuration locale (contient des mots de passe)
+Backend/pharmacy-service/src/main/resources/application.properties
