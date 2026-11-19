@@ -209,4 +209,28 @@ public class MedicamentService implements IMedicamentService {
         return versResponse(medicament);
     }
 
+    @Override
+    @Transactional
+    public void supprimerComposition(Long id, Long compositionId) {
+        Medicament medicament = medicamentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Médicament introuvable"
+                ));
+
+        CompositionMedicament aSupprimer = null;
+        for (CompositionMedicament c : medicament.getCompositions()) {
+            if (c.getId().equals(compositionId)) {
+                aSupprimer = c;
+            }
+        }
+        if (aSupprimer == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Composition introuvable");
+        }
+        if (medicament.getCompositions().size() == 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Impossible de supprimer la dernière composition");
+        }
+        medicament.getCompositions().remove(aSupprimer);
+    }
+
 }

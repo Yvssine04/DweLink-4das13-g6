@@ -46,4 +46,10 @@ public class MedicamentController {
                                                  @RequestBody CompositionRequest request) {
         return service.ajouterComposition(id, request);
     }
+
+    @DeleteMapping("/{id}/compositions/{compositionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void supprimerComposition(@PathVariable Long id, @PathVariable Long compositionId) {
+        service.supprimerComposition(id, compositionId);
+    }
 }

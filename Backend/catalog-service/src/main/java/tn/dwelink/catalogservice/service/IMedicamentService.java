@@ -16,4 +16,6 @@ public interface IMedicamentService {
     MedicamentResponse modifier(Long id, MedicamentUpdateRequest request);
 
     MedicamentResponse ajouterComposition(Long id, CompositionRequest request);
+
+    void supprimerComposition(Long id, Long compositionId);
 }
