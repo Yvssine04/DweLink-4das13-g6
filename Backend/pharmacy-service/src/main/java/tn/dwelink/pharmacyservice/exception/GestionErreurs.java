@@ -6,6 +6,8 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -31,6 +33,23 @@ public class GestionErreurs {
     @ExceptionHandler(AccesInterditException.class)
     public ResponseEntity<Map<String, Object>> accesInterdit(AccesInterditException e) {
         return reponse(HttpStatus.FORBIDDEN, e.getMessage(), null);
+    }
+
+    @ExceptionHandler(NonAuthentifieException.class)
+    public ResponseEntity<Map<String, Object>> nonAuthentifie(NonAuthentifieException e) {
+        return reponse(HttpStatus.UNAUTHORIZED, e.getMessage(), null);
+    }
+
+    /** Jeton absent, invalide ou expiré (levée par les filtres Spring Security, voir SecurityConfig). */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> authentificationRequise(AuthenticationException e) {
+        return reponse(HttpStatus.UNAUTHORIZED, "Authentification requise : jeton absent, invalide ou expiré", null);
+    }
+
+    /** Authentifié mais sans le rôle exigé (ex. PATCH /statut réservé à ADMIN). */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> roleInsuffisant(AccessDeniedException e) {
+        return reponse(HttpStatus.FORBIDDEN, "Accès refusé : rôle insuffisant", null);
     }
 
     @ExceptionHandler(RequeteInvalideException.class)

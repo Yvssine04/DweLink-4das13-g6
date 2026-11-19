@@ -30,3 +30,6 @@ spring.cloud.openfeign.client.config.utilisateurService.connect-timeout=2000
 spring.cloud.openfeign.client.config.utilisateurService.read-timeout=3000
 # Circuit breaker Resilience4j "utilisateurService" sur le client Feign (réglages dans ResilienceConfig)
 spring.cloud.openfeign.circuitbreaker.enabled=true
+
+# Sécurité : jetons JWT émis par Keycloak (realm dwelink)
+spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8180/realms/dwelink

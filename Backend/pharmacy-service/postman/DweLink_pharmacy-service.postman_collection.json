@@ -1,13 +1,27 @@
 {
   "info": {
     "name": "DweLink - pharmacy-service",
-    "description": "Tests manuels du microservice Gestion des pharmacies (port 8082). X-Utilisateur-Id simule l'utilisateur connecté.",
+    "description": "Tests manuels du microservice Gestion des pharmacies (port 8082).\nAuthentification par jeton JWT Keycloak (voir outils/keycloak/README.md) : lancer d'abord une requête du dossier « 0. Authentification » ; le jeton est enregistré dans {{token}} et envoyé en Authorization: Bearer {{token}} (auth définie au niveau de la collection). Chaque requête indique le jeton attendu.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:8082"
+    },
+    {
+      "key": "keycloakUrl",
+      "value": "http://localhost:8180"
     },
     {
       "key": "pharmacieId",
@@ -16,9 +30,210 @@
     {
       "key": "membreId",
       "value": "1"
+    },
+    {
+      "key": "token",
+      "value": ""
     }
   ],
   "item": [
+    {
+      "name": "0. Authentification",
+      "item": [
+        {
+          "name": "Obtenir un token - pharmacien (PHARMACIEN, utilisateurId 100)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Jeton obtenu', () => pm.response.to.have.status(200));",
+                  "const jeton = pm.response.json().access_token;",
+                  "pm.collectionVariables.set('token', jeton);",
+                  "console.log('Jeton pharmacien enregistré dans {{token}}');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "dwelink-frontend"
+                },
+                {
+                  "key": "username",
+                  "value": "pharmacien"
+                },
+                {
+                  "key": "password",
+                  "value": "pharmacien"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "dwelink",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Enregistre le jeton de l'utilisateur pharmacien dans la variable {{token}}."
+          }
+        },
+        {
+          "name": "Obtenir un token - admin (ADMIN, utilisateurId 900)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Jeton obtenu', () => pm.response.to.have.status(200));",
+                  "const jeton = pm.response.json().access_token;",
+                  "pm.collectionVariables.set('token', jeton);",
+                  "console.log('Jeton admin enregistré dans {{token}}');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "dwelink-frontend"
+                },
+                {
+                  "key": "username",
+                  "value": "admin"
+                },
+                {
+                  "key": "password",
+                  "value": "admin"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "dwelink",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Enregistre le jeton de l'utilisateur admin dans la variable {{token}}."
+          }
+        },
+        {
+          "name": "Obtenir un token - patient (PATIENT, utilisateurId 102)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Jeton obtenu', () => pm.response.to.have.status(200));",
+                  "const jeton = pm.response.json().access_token;",
+                  "pm.collectionVariables.set('token', jeton);",
+                  "console.log('Jeton patient enregistré dans {{token}}');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "dwelink-frontend"
+                },
+                {
+                  "key": "username",
+                  "value": "patient"
+                },
+                {
+                  "key": "password",
+                  "value": "patient"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "dwelink",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Enregistre le jeton de l'utilisateur patient dans la variable {{token}}."
+          }
+        }
+      ]
+    },
     {
       "name": "1. Pharmacies",
       "item": [
@@ -30,10 +245,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -46,7 +257,42 @@
                 "pharmacies"
               ]
             },
-            "description": "Le créateur (utilisateur 1) devient TITULAIRE ACTIF. Statut EN_ATTENTE. Relancer = 409.",
+            "description": "Jeton : pharmacien. Le créateur (pharmacien, utilisateur 100) devient TITULAIRE ACTIF. Statut EN_ATTENTE. Relancer = 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Créer sans jeton (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "description": "Aucun jeton : 401 {code, message, date}.",
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
@@ -66,10 +312,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -82,7 +324,7 @@
                 "pharmacies"
               ]
             },
-            "description": "",
+            "description": "Jeton : pharmacien.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nom\": \"\",\n  \"numeroAutorisation\": \"AUT-101\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
@@ -110,7 +352,10 @@
                 "{{pharmacieId}}"
               ]
             },
-            "description": ""
+            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -129,7 +374,10 @@
                 "999"
               ]
             },
-            "description": ""
+            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -140,10 +388,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -157,7 +401,7 @@
                 "{{pharmacieId}}"
               ]
             },
-            "description": "",
+            "description": "Jeton : pharmacien.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 222 222\"\n}",
@@ -177,10 +421,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "2"
               }
             ],
             "url": {
@@ -194,10 +434,44 @@
                 "{{pharmacieId}}"
               ]
             },
-            "description": "",
+            "description": "Jeton : patient.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Valider par un pharmacien (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "statut"
+              ]
+            },
+            "description": "Jeton : pharmacien. Rôle ADMIN exigé : 403 {code, message, date}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -228,7 +502,51 @@
                 "statut"
               ]
             },
-            "description": "",
+            "description": "Jeton : admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Valider avec un jeton modifié (401)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "statut"
+              ]
+            },
+            "description": "Jeton falsifié (signature invalide) : 401.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJSUzI1NiJ9.eyJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiQURNSU4iXX19.signature-invalide",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
@@ -253,10 +571,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -271,7 +585,7 @@
                 "horaires"
               ]
             },
-            "description": "",
+            "description": "Jeton : pharmacien.",
             "body": {
               "mode": "raw",
               "raw": "[\n  {\n    \"jour\": \"LUNDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"20:00\"\n  },\n  {\n    \"jour\": \"SAMEDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"13:00\"\n  }\n]",
@@ -291,10 +605,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -309,7 +619,7 @@
                 "horaires"
               ]
             },
-            "description": "",
+            "description": "Jeton : pharmacien.",
             "body": {
               "mode": "raw",
               "raw": "[\n  {\n    \"jour\": \"MARDI\",\n    \"heureOuverture\": \"20:00\",\n    \"heureFermeture\": \"08:00\"\n  }\n]",
@@ -329,10 +639,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -347,7 +653,7 @@
                 "gardes"
               ]
             },
-            "description": "Changer les dates pour qu'elle soit en cours maintenant.",
+            "description": "Jeton : pharmacien. Changer les dates pour qu'elle soit en cours maintenant.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"debut\": \"2026-11-19T18:00:00\",\n  \"fin\": \"2026-11-20T08:00:00\"\n}",
@@ -367,10 +673,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -385,7 +687,7 @@
                 "gardes"
               ]
             },
-            "description": "",
+            "description": "Jeton : pharmacien.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"debut\": \"2026-11-19T22:00:00\",\n  \"fin\": \"2026-11-20T10:00:00\"\n}",
@@ -423,7 +725,10 @@
                 }
               ]
             },
-            "description": ""
+            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -447,7 +752,10 @@
                 }
               ]
             },
-            "description": ""
+            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -480,7 +788,10 @@
                 }
               ]
             },
-            "description": ""
+            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         },
         {
@@ -505,7 +816,10 @@
                 }
               ]
             },
-            "description": ""
+            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         }
       ]
@@ -517,12 +831,7 @@
           "name": "Demander à rejoindre (201)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "5"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
               "host": [
@@ -535,19 +844,14 @@
                 "membres"
               ]
             },
-            "description": "L'utilisateur 5 devient ASSISTANT EN_ATTENTE. Noter l'id renvoyé et le mettre dans la variable membreId."
+            "description": "Jeton : patient. Le patient (utilisateur 102) devient ASSISTANT EN_ATTENTE. Noter l'id renvoyé et le mettre dans la variable membreId."
           }
         },
         {
           "name": "Lister les membres (titulaire) (200)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
               "host": [
@@ -560,7 +864,7 @@
                 "membres"
               ]
             },
-            "description": ""
+            "description": "Jeton : pharmacien."
           }
         },
         {
@@ -571,10 +875,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
               }
             ],
             "url": {
@@ -590,7 +890,7 @@
                 "{{membreId}}"
               ]
             },
-            "description": "",
+            "description": "Jeton : pharmacien.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"statut\": \"ACTIF\"\n}",
@@ -610,10 +910,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "2"
               }
             ],
             "url": {
@@ -629,7 +925,7 @@
                 "{{membreId}}"
               ]
             },
-            "description": "",
+            "description": "Jeton : patient.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"statut\": \"ACTIF\"\n}",
@@ -647,7 +943,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/verifier?utilisateurId=5",
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/verifier?utilisateurId=102",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -661,23 +957,18 @@
               "query": [
                 {
                   "key": "utilisateurId",
-                  "value": "5"
+                  "value": "102"
                 }
               ]
             },
-            "description": ""
+            "description": "Jeton : pharmacien."
           }
         },
         {
           "name": "Retirer un membre (204)",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "X-Utilisateur-Id",
-                "value": "1"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
               "host": [
@@ -691,7 +982,7 @@
                 "{{membreId}}"
               ]
             },
-            "description": ""
+            "description": "Jeton : pharmacien."
           }
         }
       ]
@@ -714,7 +1005,10 @@
                 "health"
               ]
             },
-            "description": ""
+            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         }
       ]
