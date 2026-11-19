@@ -2,6 +2,7 @@ package tn.dwelink.catalogservice.service;
 
 import tn.dwelink.catalogservice.dto.MedicamentRequest;
 import tn.dwelink.catalogservice.dto.MedicamentResponse;
+import tn.dwelink.catalogservice.dto.MedicamentUpdateRequest;
 
 import java.util.List;
 
@@ -10,4 +11,6 @@ public interface IMedicamentService {
     MedicamentResponse consulter(Long id);
 
     List<MedicamentResponse> rechercher(String q, String categorie, String laboratoire);
+
+    MedicamentResponse modifier(Long id, MedicamentUpdateRequest request);
 }

@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import tn.dwelink.catalogservice.dto.MedicamentRequest;
 import tn.dwelink.catalogservice.dto.MedicamentResponse;
+import tn.dwelink.catalogservice.dto.MedicamentUpdateRequest;
 import tn.dwelink.catalogservice.service.MedicamentService;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public class MedicamentController {
     private final MedicamentService service;
 
     @PostMapping
-    public MedicamentResponse creer(@RequestBody MedicamentRequest request) {
+    public MedicamentResponse creer(@Valid @RequestBody MedicamentRequest request) {
         return service.creer(request);
     }
 
@@ -31,5 +32,11 @@ public class MedicamentController {
                                                @RequestParam(required = false) String categorie,
                                                @RequestParam(required = false) String laboratoire) {
         return service.rechercher(q, categorie, laboratoire);
+    }
+
+    @PutMapping("/{id}")
+    public MedicamentResponse modifier(@PathVariable Long id,
+                                       @RequestBody MedicamentUpdateRequest request) {
+        return service.modifier(id, request);
     }
 }

@@ -18,4 +18,4 @@ public record MedicamentRequest(
         Boolean stupefiant,
         String categorie,
         String laboratoire,
-        @NotEmpty @Valid List<CompositionRequest> compositions) {}
+        @NotEmpty(message = "Au moins une composition est obligatoire") @Valid List<CompositionRequest> compositions) {}

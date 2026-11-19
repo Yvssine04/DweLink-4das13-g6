@@ -5,10 +5,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import tn.dwelink.catalogservice.dto.CompositionRequest;
-import tn.dwelink.catalogservice.dto.CompositionResponse;
-import tn.dwelink.catalogservice.dto.MedicamentRequest;
-import tn.dwelink.catalogservice.dto.MedicamentResponse;
+import tn.dwelink.catalogservice.dto.*;
 import tn.dwelink.catalogservice.entity.CompositionMedicament;
 import tn.dwelink.catalogservice.entity.Medicament;
 import tn.dwelink.catalogservice.entity.PrincipeActif;
@@ -18,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -128,4 +126,44 @@ public class MedicamentService implements IMedicamentService {
         }
         return resultat;
     }
+
+    @Override
+    @Transactional
+    public MedicamentResponse modifier(Long id, MedicamentUpdateRequest request) {
+
+        Medicament medicament = medicamentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Médicament introuvable"
+                ));
+
+        if (medicamentRepository.existsByCodeBarresAndIdNot(
+                request.codeBarres(), id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Code-barres déjà utilisé"
+            );
+        }
+
+        medicament.setNomCommercial(request.nomCommercial());
+        medicament.setCodeBarres(request.codeBarres());
+        medicament.setForme(request.forme());
+        medicament.setCategorie(request.categorie());
+        medicament.setLaboratoire(request.laboratoire());
+
+        if (request.ordonnanceRequise() != null) {
+            medicament.setOrdonnanceRequise(request.ordonnanceRequise());
+        }
+
+        if (request.stupefiant() != null) {
+            medicament.setStupefiant(request.stupefiant());
+        }
+
+        if (request.conditionConservation() != null) {
+            medicament.setConditionConservation(
+                    request.conditionConservation()
+            );
+        }
+
+        return versResponse(medicament);
+    }
+
 }
