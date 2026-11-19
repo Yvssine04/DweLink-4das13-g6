@@ -31,6 +31,11 @@ public class MedicamentService implements IMedicamentService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Code-barres déjà utilisé");
         }
 
+        if (request.compositions() == null || request.compositions().isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Au moins une composition est obligatoire");
+        }
+
         Medicament medicament = new Medicament();
         medicament.setNomCommercial(request.nomCommercial());
         medicament.setCodeBarres(request.codeBarres());
@@ -53,6 +58,13 @@ public class MedicamentService implements IMedicamentService {
             PrincipeActif principeActif = principeActifRepository.findById(cr.principeActifId())
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND, "Principe actif introuvable"));
+
+            for (CompositionMedicament deja : medicament.getCompositions()) {
+                if (deja.getPrincipeActif().getId().equals(principeActif.getId())) {
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT, "Principe actif en double dans la composition");
+                }
+            }
 
             CompositionMedicament composition = new CompositionMedicament();
             composition.setPrincipeActif(principeActif);
@@ -163,6 +175,37 @@ public class MedicamentService implements IMedicamentService {
             );
         }
 
+        return versResponse(medicament);
+    }
+
+    @Override
+    @Transactional
+    public MedicamentResponse ajouterComposition(Long id, CompositionRequest request) {
+        Medicament medicament = medicamentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Médicament introuvable"
+                ));
+
+        PrincipeActif principeActif = principeActifRepository.findById(request.principeActifId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Principe actif introuvable"));
+
+
+        for (CompositionMedicament c : medicament.getCompositions()) {
+            if (c.getPrincipeActif().getId().equals(principeActif.getId())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Ce principe actif est déjà dans la composition du médicament");
+            }
+        }
+
+        CompositionMedicament composition = new CompositionMedicament();
+        composition.setPrincipeActif(principeActif);
+        composition.setDosage(request.dosage());
+        composition.setUnite(request.unite());
+        composition.setMedicament(medicament);
+        medicament.getCompositions().add(composition);
+
+        medicamentRepository.saveAndFlush(medicament);
         return versResponse(medicament);
     }
 

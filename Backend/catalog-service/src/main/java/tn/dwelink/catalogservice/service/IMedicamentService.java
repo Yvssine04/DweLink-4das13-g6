@@ -1,5 +1,6 @@
 package tn.dwelink.catalogservice.service;
 
+import tn.dwelink.catalogservice.dto.CompositionRequest;
 import tn.dwelink.catalogservice.dto.MedicamentRequest;
 import tn.dwelink.catalogservice.dto.MedicamentResponse;
 import tn.dwelink.catalogservice.dto.MedicamentUpdateRequest;
@@ -13,4 +14,6 @@ public interface IMedicamentService {
     List<MedicamentResponse> rechercher(String q, String categorie, String laboratoire);
 
     MedicamentResponse modifier(Long id, MedicamentUpdateRequest request);
+
+    MedicamentResponse ajouterComposition(Long id, CompositionRequest request);
 }

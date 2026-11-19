@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import tn.dwelink.catalogservice.dto.CompositionRequest;
 import tn.dwelink.catalogservice.dto.MedicamentRequest;
 import tn.dwelink.catalogservice.dto.MedicamentResponse;
 import tn.dwelink.catalogservice.dto.MedicamentUpdateRequest;
@@ -38,5 +39,11 @@ public class MedicamentController {
     public MedicamentResponse modifier(@PathVariable Long id,
                                        @RequestBody MedicamentUpdateRequest request) {
         return service.modifier(id, request);
+    }
+
+    @PostMapping("/{id}/compositions")
+    public MedicamentResponse ajouterComposition(@PathVariable Long id,
+                                                 @RequestBody CompositionRequest request) {
+        return service.ajouterComposition(id, request);
     }
 }
