@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,16 +16,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import tn.dwelink.pharmacyservice.dto.DecisionMembreRequest;
 import tn.dwelink.pharmacyservice.dto.GardeRequest;
 import tn.dwelink.pharmacyservice.dto.GardeResponse;
 import tn.dwelink.pharmacyservice.dto.HoraireRequest;
 import tn.dwelink.pharmacyservice.dto.HoraireResponse;
+import tn.dwelink.pharmacyservice.dto.MembreResponse;
 import tn.dwelink.pharmacyservice.dto.PharmacieProcheResponse;
 import tn.dwelink.pharmacyservice.dto.PharmacieRequest;
 import tn.dwelink.pharmacyservice.dto.PharmacieResponse;
 import tn.dwelink.pharmacyservice.dto.StatutRequest;
+import tn.dwelink.pharmacyservice.dto.VerificationMembreResponse;
 import tn.dwelink.pharmacyservice.service.GardeService;
 import tn.dwelink.pharmacyservice.service.HoraireService;
+import tn.dwelink.pharmacyservice.service.MembreService;
 import tn.dwelink.pharmacyservice.service.PharmacieService;
 
 @RestController
@@ -35,6 +40,7 @@ public class PharmacieController {
     private final PharmacieService pharmacieService;
     private final HoraireService horaireService;
     private final GardeService gardeService;
+    private final MembreService membreService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -86,5 +92,39 @@ public class PharmacieController {
                                       @Valid @RequestBody GardeRequest req,
                                       @RequestHeader("X-Utilisateur-Id") Long utilisateurId) {
         return gardeService.ajouter(id, req, utilisateurId);
+    }
+
+    @PostMapping("/{id}/membres")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MembreResponse demanderAdhesion(@PathVariable Long id,
+                                           @RequestHeader("X-Utilisateur-Id") Long utilisateurId) {
+        return membreService.demander(id, utilisateurId);
+    }
+
+    @GetMapping("/{id}/membres")
+    public List<MembreResponse> listerMembres(@PathVariable Long id,
+                                              @RequestHeader("X-Utilisateur-Id") Long utilisateurId) {
+        return membreService.lister(id, utilisateurId);
+    }
+
+    @GetMapping("/{id}/membres/verifier")
+    public VerificationMembreResponse verifierMembre(@PathVariable Long id, @RequestParam Long utilisateurId) {
+        return membreService.verifier(id, utilisateurId);
+    }
+
+    @PatchMapping("/{id}/membres/{membreId}")
+    public MembreResponse deciderMembre(@PathVariable Long id,
+                                        @PathVariable Long membreId,
+                                        @Valid @RequestBody DecisionMembreRequest req,
+                                        @RequestHeader("X-Utilisateur-Id") Long utilisateurId) {
+        return membreService.decider(id, membreId, req.statut(), utilisateurId);
+    }
+
+    @DeleteMapping("/{id}/membres/{membreId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void retirerMembre(@PathVariable Long id,
+                              @PathVariable Long membreId,
+                              @RequestHeader("X-Utilisateur-Id") Long utilisateurId) {
+        membreService.retirer(id, membreId, utilisateurId);
     }
 }
