@@ -1,221 +1,270 @@
 {
   "info": {
-    "name": "DweLink - pharmacy-service",
-    "description": "Tests manuels du microservice Gestion des pharmacies (port 8082).\nAuthentification par jeton JWT Keycloak (voir outils/keycloak/README.md) : lancer d'abord une requête du dossier « 0. Authentification » ; le jeton est enregistré dans {{token}} et envoyé en Authorization: Bearer {{token}} (auth définie au niveau de la collection). Chaque requête indique le jeton attendu.",
+    "_postman_id": "59f50a43-0490-47df-9f98-dcf16f3bc553",
+    "name": "DweLink - pharmacy-service (test complet)",
+    "description": "Test complet de pharmacy-service : Keycloak (JWT), OpenFeign + Resilience4j, règles métier, événements RabbitMQ émis et consommés, pannes.\n\nPrérequis : conteneurs rabbitmq, faux-user-service (WireMock) et keycloak lancés, service sur 8082.\nDossiers 0 à 8 : lancer avec le Runner, dans l'ordre. Dossier 9 : manuel.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{token}}",
-        "type": "string"
-      }
-    ]
-  },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8082"
-    },
-    {
-      "key": "keycloakUrl",
-      "value": "http://localhost:8180"
-    },
-    {
-      "key": "pharmacieId",
-      "value": "1"
-    },
-    {
-      "key": "membreId",
-      "value": "1"
-    },
-    {
-      "key": "token",
-      "value": ""
-    }
-  ],
   "item": [
     {
-      "name": "0. Authentification",
+      "name": "0. Préparation (RabbitMQ + santé)",
       "item": [
         {
-          "name": "Obtenir un token - pharmacien (PHARMACIEN, utilisateurId 100)",
+          "name": "Santé du service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Jeton obtenu', () => pm.response.to.have.status(200));",
-                  "const jeton = pm.response.json().access_token;",
-                  "pm.collectionVariables.set('token', jeton);",
-                  "console.log('Jeton pharmacien enregistré dans {{token}}');"
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "client_id",
-                  "value": "dwelink-frontend"
-                },
-                {
-                  "key": "username",
-                  "value": "pharmacien"
-                },
-                {
-                  "key": "password",
-                  "value": "pharmacien"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
-              "host": [
-                "{{keycloakUrl}}"
-              ],
-              "path": [
-                "realms",
-                "dwelink",
-                "protocol",
-                "openid-connect",
-                "token"
-              ]
-            },
-            "description": "Enregistre le jeton de l'utilisateur pharmacien dans la variable {{token}}."
-          }
+          ]
         },
         {
-          "name": "Obtenir un token - admin (ADMIN, utilisateurId 900)",
+          "name": "Créer la queue de test test.pharmacie.q",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/queues/%2F/test.pharmacie.q",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "queues",
+                "%2F",
+                "test.pharmacie.q"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"durable\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Jeton obtenu', () => pm.response.to.have.status(200));",
-                  "const jeton = pm.response.json().access_token;",
-                  "pm.collectionVariables.set('token', jeton);",
-                  "console.log('Jeton admin enregistré dans {{token}}');"
+                  "pm.test(\"Queue prête (201 ou 204)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 204]));"
                 ]
               }
             }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "client_id",
-                  "value": "dwelink-frontend"
-                },
-                {
-                  "key": "username",
-                  "value": "admin"
-                },
-                {
-                  "key": "password",
-                  "value": "admin"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
-              "host": [
-                "{{keycloakUrl}}"
-              ],
-              "path": [
-                "realms",
-                "dwelink",
-                "protocol",
-                "openid-connect",
-                "token"
-              ]
-            },
-            "description": "Enregistre le jeton de l'utilisateur admin dans la variable {{token}}."
-          }
+          ]
         },
         {
-          "name": "Obtenir un token - patient (PATIENT, utilisateurId 102)",
+          "name": "Lier test.pharmacie.q à dwelink.events (pharmacie.#)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/bindings/%2F/e/dwelink.events/q/test.pharmacie.q",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "bindings",
+                "%2F",
+                "e",
+                "dwelink.events",
+                "q",
+                "test.pharmacie.q"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routing_key\": \"pharmacie.#\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Jeton obtenu', () => pm.response.to.have.status(200));",
-                  "const jeton = pm.response.json().access_token;",
-                  "pm.collectionVariables.set('token', jeton);",
-                  "console.log('Jeton patient enregistré dans {{token}}');"
+                  "pm.test(\"Binding créé\", () => pm.expect(pm.response.code).to.be.oneOf([201, 204]));"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Vider test.pharmacie.q (purge)",
           "request": {
-            "auth": {
-              "type": "noauth"
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/queues/%2F/test.pharmacie.q/contents",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "queues",
+                "%2F",
+                "test.pharmacie.q",
+                "contents"
+              ]
             },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "client_id",
-                  "value": "dwelink-frontend"
-                },
+            "auth": {
+              "type": "basic",
+              "basic": [
                 {
                   "key": "username",
-                  "value": "patient"
+                  "value": "guest",
+                  "type": "string"
                 },
                 {
                   "key": "password",
-                  "value": "patient"
+                  "value": "guest",
+                  "type": "string"
                 }
               ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "pharmacie.compte.q a 1 consumer (le service écoute)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/queues/%2F/pharmacie.compte.q",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "queues",
+                "%2F",
+                "pharmacie.compte.q"
+              ]
             },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Au moins 1 consumer\", () => pm.expect(pm.response.json().consumers).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Prépare RabbitMQ via son API HTTP (guest/guest). Avant : docker ps doit montrer rabbitmq, faux-user-service et keycloak, et le service doit tourner."
+    },
+    {
+      "name": "1. Authentification (Keycloak)",
+      "item": [
+        {
+          "name": "Obtenir un token (pharmacien)",
+          "request": {
+            "method": "POST",
+            "header": [],
             "url": {
               "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
               "host": [
@@ -229,227 +278,265 @@
                 "token"
               ]
             },
-            "description": "Enregistre le jeton de l'utilisateur patient dans la variable {{token}}."
-          }
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "dwelink-frontend",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "pharmacien",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "pharmacien",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().access_token;",
+                  "pm.test(\"Token reçu\", () => pm.expect(t).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"token_pharmacien\", t);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtenir un token (patient)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "dwelink",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "dwelink-frontend",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "patient",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "patient",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().access_token;",
+                  "pm.test(\"Token reçu\", () => pm.expect(t).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"token_patient\", t);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtenir un token (admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/dwelink/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "dwelink",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "dwelink-frontend",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "admin",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "admin",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().access_token;",
+                  "pm.test(\"Token reçu\", () => pm.expect(t).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"token_admin\", t);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "1. Pharmacies",
+      "name": "2. Sécurité JWT",
       "item": [
         {
-          "name": "Créer une pharmacie (201)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies"
-              ]
-            },
-            "description": "Jeton : pharmacien. Le créateur (pharmacien, utilisateur 100) devient TITULAIRE ACTIF. Statut EN_ATTENTE. Relancer = 409.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Créer sans jeton (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies"
-              ]
-            },
-            "description": "Aucun jeton : 401 {code, message, date}.",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Créer avec nom vide (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies"
-              ]
-            },
-            "description": "Jeton : pharmacien.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nom\": \"\",\n  \"numeroAutorisation\": \"AUT-101\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Consulter (200)",
+          "name": "GET liste sans token → 200 (public)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "raw": "{{baseUrl}}/api/pharmacies?ville=Tunis",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "pharmacies",
-                "{{pharmacieId}}"
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "ville",
+                  "value": "Tunis"
+                }
               ]
             },
-            "description": "Route publique : aucun jeton.",
             "auth": {
               "type": "noauth"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Consulter inexistante (404)",
+          "name": "POST sans token → 401",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/999",
+              "raw": "{{baseUrl}}/api/pharmacies",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "pharmacies",
-                "999"
+                "pharmacies"
               ]
             },
-            "description": "Route publique : aucun jeton.",
             "auth": {
               "type": "noauth"
-            }
-          }
-        },
-        {
-          "name": "Modifier par le titulaire (200)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies",
-                "{{pharmacieId}}"
-              ]
             },
-            "description": "Jeton : pharmacien.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 222 222\"\n}",
+              "raw": "{\n  \"nom\": \"Pharmacie Test Complet\",\n  \"numeroAutorisation\": \"AUT-SECU\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 333 333\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
-        },
-        {
-          "name": "Modifier par un autre (403)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies",
-                "{{pharmacieId}}"
-              ]
-            },
-            "description": "Jeton : patient.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nom\": \"Pharmacie Ennour\",\n  \"numeroAutorisation\": \"AUT-100\",\n  \"adresse\": \"5 rue de Marseille\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 111 111\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 401\", () => pm.response.to.have.status(401));"
+                ]
               }
             }
-          }
+          ]
         },
         {
-          "name": "Valider par un pharmacien (403)",
+          "name": "POST avec un token falsifié → 401",
           "request": {
-            "method": "PATCH",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -457,92 +544,325 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "raw": "{{baseUrl}}/api/pharmacies",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "pharmacies",
-                "{{pharmacieId}}",
-                "statut"
+                "pharmacies"
               ]
             },
-            "description": "Jeton : pharmacien. Rôle ADMIN exigé : 403 {code, message, date}.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Valider (admin) (200)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies",
-                "{{pharmacieId}}",
-                "statut"
-              ]
-            },
-            "description": "Jeton : admin.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Valider avec un jeton modifié (401)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies",
-                "{{pharmacieId}}",
-                "statut"
-              ]
-            },
-            "description": "Jeton falsifié (signature invalide) : 401.",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "eyJhbGciOiJSUzI1NiJ9.eyJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiQURNSU4iXX19.signature-invalide",
+                  "value": "eyJhbGciOiJSUzI1NiJ9.eyJyb2xlIjoiQURNSU4ifQ.faux",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Test Complet\",\n  \"numeroAutorisation\": \"AUT-SECU\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 333 333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. OpenFeign + Resilience4j (appel à user-service)",
+      "item": [
+        {
+          "name": "Créer une pharmacie (pharmacien 100) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Test Complet\",\n  \"numeroAutorisation\": \"{{numero}}\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 333 333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"numero\", \"AUT-\" + Date.now()); // numéro unique à chaque exécution"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"Statut EN_ATTENTE\", () => pm.expect(p.statut).to.eql(\"EN_ATTENTE\"));",
+                  "pm.collectionVariables.set(\"pharmacieId\", p.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Créer avec le patient (user-service dit PATIENT) → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_patient}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Patient\",\n  \"numeroAutorisation\": \"{{numero}}-P\",\n  \"adresse\": \"1 rue de Rome\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 444 444\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Créer avec l'admin (900 inconnu de user-service) → 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Admin\",\n  \"numeroAutorisation\": \"{{numero}}-A\",\n  \"adresse\": \"1 rue de Rome\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 555 555\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Pharmacie, statut, recherche",
+      "item": [
+        {
+          "name": "Détail → EN_ATTENTE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"EN_ATTENTE\", () => pm.expect(pm.response.json().statut).to.eql(\"EN_ATTENTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recherche par ville → absente (pas encore VALIDEE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies?ville=Tunis",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "ville",
+                  "value": "Tunis"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "pm.test(\"Pharmacie absente\", () => pm.expect(pm.response.json().map(p => p.id)).to.not.include(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Valider avec le pharmacien → 403 (ADMIN requis)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "statut"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
                   "type": "string"
                 }
               ]
@@ -556,51 +876,23 @@
                 }
               }
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "2. Horaires et gardes",
-      "item": [
-        {
-          "name": "Définir les horaires (200)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies",
-                "{{pharmacieId}}",
-                "horaires"
-              ]
-            },
-            "description": "Jeton : pharmacien.",
-            "body": {
-              "mode": "raw",
-              "raw": "[\n  {\n    \"jour\": \"LUNDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"20:00\"\n  },\n  {\n    \"jour\": \"SAMEDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"13:00\"\n  }\n]",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));"
+                ]
               }
             }
-          }
+          ]
         },
         {
-          "name": "Horaire fermeture avant ouverture (400)",
+          "name": "Valider avec l'admin → 200 (événement 1)",
           "request": {
-            "method": "PUT",
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -608,7 +900,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -616,25 +908,46 @@
                 "api",
                 "pharmacies",
                 "{{pharmacieId}}",
-                "horaires"
+                "statut"
               ]
             },
-            "description": "Jeton : pharmacien.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "[\n  {\n    \"jour\": \"MARDI\",\n    \"heureOuverture\": \"20:00\",\n    \"heureFermeture\": \"08:00\"\n  }\n]",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"VALIDEE\", () => pm.expect(pm.response.json().statut).to.eql(\"VALIDEE\"));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Ajouter une garde (201)",
+          "name": "Valider une 2e fois → 200, aucun événement",
           "request": {
-            "method": "POST",
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -642,7 +955,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -650,67 +963,48 @@
                 "api",
                 "pharmacies",
                 "{{pharmacieId}}",
-                "gardes"
+                "statut"
               ]
             },
-            "description": "Jeton : pharmacien. Changer les dates pour qu'elle soit en cours maintenant.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"debut\": \"2026-11-19T18:00:00\",\n  \"fin\": \"2026-11-20T08:00:00\"\n}",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Garde qui chevauche (409)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies",
-                "{{pharmacieId}}",
-                "gardes"
-              ]
-            },
-            "description": "Jeton : pharmacien.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"debut\": \"2026-11-19T22:00:00\",\n  \"fin\": \"2026-11-20T10:00:00\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "3. Recherche (publique)",
-      "item": [
-        {
-          "name": "Par ville (200)",
+          "name": "Recherche par ville → présente",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies?ville=tunis",
+              "raw": "{{baseUrl}}/api/pharmacies?ville=Tunis",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -721,50 +1015,35 @@
               "query": [
                 {
                   "key": "ville",
-                  "value": "tunis"
+                  "value": "Tunis"
                 }
               ]
             },
-            "description": "Route publique : aucun jeton.",
             "auth": {
               "type": "noauth"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "pm.test(\"Pharmacie présente\", () => pm.expect(pm.response.json().map(p => p.id)).to.include(id));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "De garde maintenant (200)",
+          "name": "Pharmacies proches → présente",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies?deGarde=true",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies"
-              ],
-              "query": [
-                {
-                  "key": "deGarde",
-                  "value": "true"
-                }
-              ]
-            },
-            "description": "Route publique : aucun jeton.",
-            "auth": {
-              "type": "noauth"
-            }
-          }
-        },
-        {
-          "name": "Proches (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.8&lng=10.18&rayonKm=10",
+              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.80&lng=10.18&rayonKm=5",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -776,7 +1055,7 @@
               "query": [
                 {
                   "key": "lat",
-                  "value": "36.8"
+                  "value": "36.80"
                 },
                 {
                   "key": "lng",
@@ -784,23 +1063,35 @@
                 },
                 {
                   "key": "rayonKm",
-                  "value": "10"
+                  "value": "5"
                 }
               ]
             },
-            "description": "Route publique : aucun jeton.",
             "auth": {
               "type": "noauth"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "pm.test(\"Pharmacie présente\", () => pm.expect(pm.response.json().map(p => p.id)).to.include(id));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Proches sans lng (400)",
+          "name": "Pharmacies proches sans lng → 400",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.8",
+              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.80",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -812,23 +1103,446 @@
               "query": [
                 {
                   "key": "lat",
-                  "value": "36.8"
+                  "value": "36.80"
                 }
               ]
             },
-            "description": "Route publique : aucun jeton.",
             "auth": {
               "type": "noauth"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modifier la pharmacie (titulaire) → 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Test Complet\",\n  \"numeroAutorisation\": \"{{numero}}\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 999 999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modifier avec un nom vide → 400 (validation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"\",\n  \"numeroAutorisation\": \"{{numero}}\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 999 999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pharmacie inexistante → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "999999"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "4. Membres",
+      "name": "5. Horaires et gardes",
       "item": [
         {
-          "name": "Demander à rejoindre (201)",
+          "name": "Définir les horaires → 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "horaires"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"jour\": \"LUNDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"20:00\"\n  },\n  {\n    \"jour\": \"SAMEDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"13:00\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Horaire fermeture avant ouverture → 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "horaires"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"jour\": \"MARDI\",\n    \"heureOuverture\": \"20:00\",\n    \"heureFermeture\": \"08:00\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ajouter une garde → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-12-01T20:00:00\",\n  \"fin\": \"2026-12-02T08:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Garde qui chevauche → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-12-02T06:00:00\",\n  \"fin\": \"2026-12-02T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ajouter une garde avec le patient → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_patient}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-12-05T20:00:00\",\n  \"fin\": \"2026-12-06T08:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Membres",
+      "item": [
+        {
+          "name": "Demander à rejoindre (patient 102) → 201 (événement 2)",
           "request": {
             "method": "POST",
             "header": [],
@@ -844,11 +1558,89 @@
                 "membres"
               ]
             },
-            "description": "Jeton : patient. Le patient (utilisateur 102) devient ASSISTANT EN_ATTENTE. Noter l'id renvoyé et le mettre dans la variable membreId."
-          }
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_patient}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "const m = pm.response.json();",
+                  "pm.test(\"EN_ATTENTE\", () => pm.expect(m.statut).to.eql(\"EN_ATTENTE\"));",
+                  "pm.collectionVariables.set(\"membreId\", m.id);"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Lister les membres (titulaire) (200)",
+          "name": "Le patient s'accepte lui-même → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "{{membreId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_patient}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"ACTIF\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lister les membres (titulaire) → 2 membres",
           "request": {
             "method": "GET",
             "header": [],
@@ -864,11 +1656,32 @@
                 "membres"
               ]
             },
-            "description": "Jeton : pharmacien."
-          }
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"2 membres\", () => pm.expect(pm.response.json().length).to.eql(2));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Accepter (200)",
+          "name": "Accepter le membre (titulaire) → 200 (événement 3)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -890,42 +1703,16 @@
                 "{{membreId}}"
               ]
             },
-            "description": "Jeton : pharmacien.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"statut\": \"ACTIF\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
                 }
-              }
-            }
-          }
-        },
-        {
-          "name": "Accepter par un non-titulaire (403)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "pharmacies",
-                "{{pharmacieId}}",
-                "membres",
-                "{{membreId}}"
               ]
             },
-            "description": "Jeton : patient.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"statut\": \"ACTIF\"\n}",
@@ -935,10 +1722,22 @@
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ACTIF\", () => pm.expect(pm.response.json().statut).to.eql(\"ACTIF\"));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Vérifier un membre (200)",
+          "name": "Vérifier l'appartenance de 102 → 200",
           "request": {
             "method": "GET",
             "header": [],
@@ -961,16 +1760,119 @@
                 }
               ]
             },
-            "description": "Jeton : pharmacien."
-          }
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Retirer un membre (204)",
+          "name": "Redemander alors qu'il est déjà membre → 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_patient}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trouver l'id du membre titulaire",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Récupère l'id du membre titulaire pour la requête suivante."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const t = pm.response.json().find(m => m.role === \"TITULAIRE\");",
+                  "pm.collectionVariables.set(\"titulaireMembreId\", t.id);",
+                  "pm.test(\"Titulaire trouvé\", () => pm.expect(t).to.not.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE du titulaire → 409",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{titulaireMembreId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -979,39 +1881,804 @@
                 "pharmacies",
                 "{{pharmacieId}}",
                 "membres",
-                "{{membreId}}"
+                "{{titulaireMembreId}}"
               ]
             },
-            "description": "Jeton : pharmacien."
-          }
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "5. Santé",
+      "name": "7. RabbitMQ – événements émis",
       "item": [
         {
-          "name": "Actuator health (UP)",
+          "name": "Lire test.pharmacie.q → 3 événements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/queues/%2F/test.pharmacie.q/get",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "queues",
+                "%2F",
+                "test.pharmacie.q",
+                "get"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Lit les messages sans les supprimer (ack_requeue_true). Ouvre la Console Postman pour voir les payloads.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"count\": 20,\n  \"ackmode\": \"ack_requeue_true\",\n  \"encoding\": \"auto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 1500); // laisse le temps au service de lire le message"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "const msgs = pm.response.json().filter(m => { try { return JSON.parse(m.payload).pharmacieId === id; } catch (e) { return false; } });",
+                  "pm.test(\"Exactement 3 événements pour la pharmacie \" + id, () => pm.expect(msgs.length).to.eql(3));",
+                  "const attendues = [\"pharmacie.statut.modifie\", \"pharmacie.rattachement.cree\", \"pharmacie.membres.modifies\"];",
+                  "pm.test(\"Routing keys dans le bon ordre\", () => pm.expect(msgs.map(m => m.routing_key)).to.eql(attendues));",
+                  "msgs.forEach((m, i) => console.log((i + 1) + \". \" + m.routing_key + \" -> \" + m.payload));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. RabbitMQ – événement consommé (StatutCompteModifie)",
+      "item": [
+        {
+          "name": "user-service annonce : 102 SUSPENDU",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/exchanges/%2F/dwelink.events/publish",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "exchanges",
+                "%2F",
+                "dwelink.events",
+                "publish"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"properties\": {\n    \"content_type\": \"application/json\"\n  },\n  \"routing_key\": \"utilisateur.compte.statut.modifie\",\n  \"payload\": \"{\\\"utilisateurId\\\":102,\\\"nouveauStatut\\\":\\\"SUSPENDU\\\",\\\"date\\\":\\\"2026-11-19T22:00:00\\\"}\",\n  \"payload_encoding\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Message routé vers une queue\", () => pm.expect(pm.response.json().routed).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "102 a disparu des membres (événement 4 RETIRE)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/actuator/health",
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "actuator",
-                "health"
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
               ]
             },
-            "description": "Route publique : aucun jeton.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 1500); // laisse le temps au service de lire le message"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"102 absent\", () => pm.expect(pm.response.json().map(m => m.utilisateurId)).to.not.include(102));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "user-service annonce : 100 SUSPENDU (titulaire)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/exchanges/%2F/dwelink.events/publish",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "exchanges",
+                "%2F",
+                "dwelink.events",
+                "publish"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"properties\": {\n    \"content_type\": \"application/json\"\n  },\n  \"routing_key\": \"utilisateur.compte.statut.modifie\",\n  \"payload\": \"{\\\"utilisateurId\\\":100,\\\"nouveauStatut\\\":\\\"SUSPENDU\\\",\\\"date\\\":\\\"2026-11-19T22:01:00\\\"}\",\n  \"payload_encoding\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Message routé vers une queue\", () => pm.expect(pm.response.json().routed).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "La pharmacie est SUSPENDUE (événement 5)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
             "auth": {
               "type": "noauth"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 1500); // laisse le temps au service de lire le message"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"SUSPENDUE\", () => pm.expect(pm.response.json().statut).to.eql(\"SUSPENDUE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Même annonce une 2e fois (idempotence)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/exchanges/%2F/dwelink.events/publish",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "exchanges",
+                "%2F",
+                "dwelink.events",
+                "publish"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"properties\": {\n    \"content_type\": \"application/json\"\n  },\n  \"routing_key\": \"utilisateur.compte.statut.modifie\",\n  \"payload\": \"{\\\"utilisateurId\\\":100,\\\"nouveauStatut\\\":\\\"SUSPENDU\\\",\\\"date\\\":\\\"2026-11-19T22:01:00\\\"}\",\n  \"payload_encoding\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Message routé vers une queue\", () => pm.expect(pm.response.json().routed).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Statut ACTIF → ignoré (log INFO)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/exchanges/%2F/dwelink.events/publish",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "exchanges",
+                "%2F",
+                "dwelink.events",
+                "publish"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"properties\": {\n    \"content_type\": \"application/json\"\n  },\n  \"routing_key\": \"utilisateur.compte.statut.modifie\",\n  \"payload\": \"{\\\"utilisateurId\\\":102,\\\"nouveauStatut\\\":\\\"ACTIF\\\",\\\"date\\\":\\\"2026-11-19T22:02:00\\\"}\",\n  \"payload_encoding\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Message routé vers une queue\", () => pm.expect(pm.response.json().routed).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JSON cassé → rejeté (log ERROR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/exchanges/%2F/dwelink.events/publish",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "exchanges",
+                "%2F",
+                "dwelink.events",
+                "publish"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"properties\": {\n    \"content_type\": \"application/json\"\n  },\n  \"routing_key\": \"utilisateur.compte.statut.modifie\",\n  \"payload\": \"{ ceci n est pas du json\",\n  \"payload_encoding\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Message routé vers une queue\", () => pm.expect(pm.response.json().routed).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "pharmacie.compte.q vide (pas de boucle)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/queues/%2F/pharmacie.compte.q",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "queues",
+                "%2F",
+                "pharmacie.compte.q"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 1500); // laisse le temps au service de lire le message"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const q = pm.response.json();",
+                  "pm.test(\"0 message en attente\", () => pm.expect(q.messages || 0).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bilan : test.pharmacie.q → exactement 5 événements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{rabbitUrl}}/api/queues/%2F/test.pharmacie.q/get",
+              "host": [
+                "{{rabbitUrl}}"
+              ],
+              "path": [
+                "api",
+                "queues",
+                "%2F",
+                "test.pharmacie.q",
+                "get"
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"count\": 20,\n  \"ackmode\": \"ack_requeue_true\",\n  \"encoding\": \"auto\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 1500); // laisse le temps au service de lire le message"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "const msgs = pm.response.json().filter(m => { try { return JSON.parse(m.payload).pharmacieId === id; } catch (e) { return false; } });",
+                  "pm.test(\"Exactement 5 événements pour la pharmacie \" + id, () => pm.expect(msgs.length).to.eql(5));",
+                  "const attendues = [\"pharmacie.statut.modifie\", \"pharmacie.rattachement.cree\", \"pharmacie.membres.modifies\", \"pharmacie.membres.modifies\", \"pharmacie.statut.modifie\"];",
+                  "pm.test(\"Routing keys dans le bon ordre\", () => pm.expect(msgs.map(m => m.routing_key)).to.eql(attendues));",
+                  "msgs.forEach((m, i) => console.log((i + 1) + \". \" + m.routing_key + \" -> \" + m.payload));"
+                ]
+              }
+            }
+          ]
         }
       ]
+    },
+    {
+      "name": "9. Pannes (manuel, à lancer une par une)",
+      "item": [
+        {
+          "name": "Resilience4j : user-service arrêté → 503",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_pharmacien}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "AVANT : docker stop faux-user-service. APRÈS : docker start faux-user-service, puis attendre 10 s.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Panne\",\n  \"numeroAutorisation\": \"{{numero}}-503\",\n  \"adresse\": \"1 rue de Rome\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 666 666\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 503\", () => pm.response.to.have.status(503));",
+                  "pm.test(\"Réponse rapide (< 4 s)\", () => pm.expect(pm.response.responseTime).to.be.below(4000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "RabbitMQ arrêté : le PATCH réussit quand même → 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "statut"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "AVANT : docker stop rabbitmq. Regarde le log WARN dans la console IntelliJ. APRÈS : docker start rabbitmq.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Ces tests demandent d'arrêter un conteneur avant de les lancer. Ne les mets pas dans le Runner automatique."
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "keycloakUrl",
+      "value": "http://localhost:8180"
+    },
+    {
+      "key": "rabbitUrl",
+      "value": "http://localhost:15672"
+    },
+    {
+      "key": "pharmacieId",
+      "value": ""
+    },
+    {
+      "key": "membreId",
+      "value": ""
+    },
+    {
+      "key": "titulaireMembreId",
+      "value": ""
+    },
+    {
+      "key": "numero",
+      "value": ""
+    },
+    {
+      "key": "token_pharmacien",
+      "value": ""
+    },
+    {
+      "key": "token_patient",
+      "value": ""
+    },
+    {
+      "key": "token_admin",
+      "value": ""
     }
   ]
 }
