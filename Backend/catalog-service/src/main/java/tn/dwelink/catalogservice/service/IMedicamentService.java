@@ -1,5 +1,6 @@
 package tn.dwelink.catalogservice.service;
 
+import org.springframework.web.multipart.MultipartFile;
 import tn.dwelink.catalogservice.dto.CompositionRequest;
 import tn.dwelink.catalogservice.dto.MedicamentRequest;
 import tn.dwelink.catalogservice.dto.MedicamentResponse;
@@ -22,4 +23,8 @@ public interface IMedicamentService {
     List<MedicamentResponse> equivalents(Long id);
 
     MedicamentResponse retirer(Long id);
+
+    public MedicamentResponse ajouterImage(Long id, MultipartFile file);
+
+    void supprimerImage(Long id);
 }

@@ -49,6 +49,8 @@ public class Medicament {
 
     private String laboratoire;
 
+    private String imageUrl;
+
     @OneToMany(mappedBy = "medicament", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CompositionMedicament> compositions = new ArrayList<>();
 

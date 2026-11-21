@@ -1,9 +1,12 @@
 package tn.dwelink.catalogservice.service;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import tn.dwelink.catalogservice.dto.*;
 import tn.dwelink.catalogservice.entity.CompositionMedicament;
@@ -14,6 +17,10 @@ import tn.dwelink.catalogservice.repository.MedicamentRepository;
 import tn.dwelink.catalogservice.repository.PrincipeActifRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +32,14 @@ public class MedicamentService implements IMedicamentService {
 
     private final MedicamentRepository medicamentRepository;
     private final PrincipeActifRepository principeActifRepository;
+    @Value("${app.upload-dir}")
+    private String uploadDir;
 
     @Override
+    @Transactional
     public MedicamentResponse creer(MedicamentRequest request) {
-
-        if (medicamentRepository.existsByCodeBarres(request.codeBarres())) {
+        String code = request.codeBarres().trim();
+        if (medicamentRepository.existsByCodeBarres(code)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Code-barres déjà utilisé");
         }
 
@@ -40,7 +50,7 @@ public class MedicamentService implements IMedicamentService {
 
         Medicament medicament = new Medicament();
         medicament.setNomCommercial(request.nomCommercial());
-        medicament.setCodeBarres(request.codeBarres());
+        medicament.setCodeBarres(code);
         medicament.setForme(request.forme());
         medicament.setCategorie(request.categorie());
         medicament.setLaboratoire(request.laboratoire());
@@ -54,7 +64,6 @@ public class MedicamentService implements IMedicamentService {
         if (request.conditionConservation() != null) {
             medicament.setConditionConservation(request.conditionConservation());
         }
-
 
         for (CompositionRequest cr : request.compositions()) {
             PrincipeActif principeActif = principeActifRepository.findById(cr.principeActifId())
@@ -104,7 +113,7 @@ public class MedicamentService implements IMedicamentService {
         return new MedicamentResponse(
                 m.getId(), m.getNomCommercial(), m.getCodeBarres(), m.getForme(),
                 m.getOrdonnanceRequise(), m.getConditionConservation(), m.getStupefiant(),
-                m.getStatut(), m.getDateRetrait(), m.getCategorie(), m.getLaboratoire(),
+                m.getStatut(), m.getDateRetrait(), m.getCategorie(), m.getLaboratoire(),m.getImageUrl(),
                 compositions);
     }
 
@@ -144,6 +153,11 @@ public class MedicamentService implements IMedicamentService {
     public MedicamentResponse modifier(Long id, MedicamentUpdateRequest request) {
 
         Medicament medicament = trouver(id);
+
+        if (medicament.getStatut() == StatutMedicament.RETIRE) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Un médicament retiré ne peut plus être modifié");
+        }
 
         if (medicamentRepository.existsByCodeBarresAndIdNot(
                 request.codeBarres(), id)) {
@@ -276,9 +290,77 @@ public class MedicamentService implements IMedicamentService {
         return versResponse(medicament);
     }
 
+    @Override
+    @Transactional
+    public MedicamentResponse ajouterImage(Long id, MultipartFile file) {
+        Medicament medicament = trouver(id);
+
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Fichier vide");
+        }
+
+        String type = file.getContentType();
+        String extension;
+        if ("image/jpeg".equals(type)) {
+            extension = ".jpg";
+        } else if ("image/png".equals(type)) {
+            extension = ".png";
+        } else if ("image/webp".equals(type)) {
+            extension = ".webp";
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Image JPG, PNG ou WEBP uniquement");
+        }
+
+        String ancienne = medicament.getImageUrl();
+        String nomFichier = "medicament-" + id + "-" + System.currentTimeMillis() + extension;
+
+
+        try {
+            Path dossier = Path.of(uploadDir);
+            Files.createDirectories(dossier);
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, dossier.resolve(nomFichier));
+            }
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Échec de l'enregistrement de l'image");
+        }
+
+        medicament.setImageUrl(nomFichier);
+
+        // Supprimer l'ancienne image
+        if (ancienne != null) {
+            try {
+                Files.deleteIfExists(Path.of(uploadDir).resolve(ancienne));
+            } catch (IOException e) {
+
+            }
+        }
+
+        return versResponse(medicament);
+
+    }
+
+    @Override
+    @Transactional
+    public void supprimerImage(Long id) {
+        Medicament medicament = trouver(id);
+        if (medicament.getImageUrl() != null) {
+            try {
+                Files.deleteIfExists(Path.of(uploadDir).resolve(medicament.getImageUrl()));
+            } catch (IOException e) {
+                // ignoré
+            }
+            medicament.setImageUrl(null);
+        }
+    }
+
     private Medicament trouver(Long id) {
         return medicamentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Médicament introuvable"));
     }
+
+
 }

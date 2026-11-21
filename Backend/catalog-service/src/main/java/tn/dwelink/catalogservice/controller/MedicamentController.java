@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import tn.dwelink.catalogservice.dto.CompositionRequest;
 import tn.dwelink.catalogservice.dto.MedicamentRequest;
 import tn.dwelink.catalogservice.dto.MedicamentResponse;
@@ -61,5 +62,17 @@ public class MedicamentController {
     @PatchMapping("/{id}/retrait")
     public MedicamentResponse retirer(@PathVariable Long id) {
         return service.retirer(id);
+    }
+
+    @PostMapping("/{id}/image")
+    public MedicamentResponse ajouterImage(@PathVariable Long id,
+                                           @RequestParam("file") MultipartFile file) {
+        return service.ajouterImage(id, file);
+    }
+
+    @DeleteMapping("/{id}/image")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void supprimerImage(@PathVariable Long id) {
+        service.supprimerImage(id);
     }
 }
