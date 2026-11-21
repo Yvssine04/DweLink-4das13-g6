@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:user_test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+jwt:
+  secret: d39f82bb52542a1768c68cfa14ef9c24e650bc7bc8ad53f938221665a31940ac
+  expiration: 3600000
