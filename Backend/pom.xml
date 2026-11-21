@@ -28,6 +28,7 @@
         <module>eureka-server</module>
         <module>user-service</module>
         <module>pharmacy-service</module>
+        <module>catalog-service</module>
     </modules>
 
     <dependencyManagement>
