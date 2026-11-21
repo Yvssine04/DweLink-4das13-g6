@@ -16,20 +16,15 @@ spring.jpa.show-sql=true
 # Actuator
 management.endpoints.web.exposure.include=health
 
-# RabbitMQ
-spring.rabbitmq.host=localhost
-spring.rabbitmq.port=5672
-spring.rabbitmq.username=guest
-spring.rabbitmq.password=guest
+# Eureka (serveur de découverte)
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+eureka.instance.prefer-ip-address=true
 
-# user-service (OpenFeign)
-# Pour l'instant sans Eureka : URL fixe. Plus tard, on supprimera cette URL et Feign
-# résoudra le nom "user-service" via Eureka.
-services.utilisateur.url=http://localhost:8081
+# user-service (OpenFeign) : résolu par son nom Eureka "user-service"
 spring.cloud.openfeign.client.config.utilisateurService.connect-timeout=2000
 spring.cloud.openfeign.client.config.utilisateurService.read-timeout=3000
 # Circuit breaker Resilience4j "utilisateurService" sur le client Feign (réglages dans ResilienceConfig)
 spring.cloud.openfeign.circuitbreaker.enabled=true
 
-# Sécurité : jetons JWT émis par Keycloak (realm dwelink)
-spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8180/realms/dwelink

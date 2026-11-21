@@ -18,8 +18,6 @@ import tn.dwelink.pharmacyservice.dto.PharmacieResponse;
 import tn.dwelink.pharmacyservice.entity.MembrePharmacie;
 import tn.dwelink.pharmacyservice.entity.Pharmacie;
 import tn.dwelink.pharmacyservice.enums.RoleMembre;
-import tn.dwelink.pharmacyservice.evenement.PublicateurEvenements;
-import tn.dwelink.pharmacyservice.evenement.StatutPharmacieModifie;
 import tn.dwelink.pharmacyservice.enums.StatutMembre;
 import tn.dwelink.pharmacyservice.enums.StatutPharmacie;
 import tn.dwelink.pharmacyservice.exception.AccesInterditException;
@@ -43,7 +41,6 @@ public class PharmacieService {
     private final PharmacieRepository pharmacieRepository;
     private final MembrePharmacieRepository membreRepository;
     private final GardeRepository gardeRepository;
-    private final PublicateurEvenements publicateurEvenements;
     private final UtilisateurClient utilisateurClient;
 
     public PharmacieResponse creer(PharmacieRequest req, Long utilisateurId) {
@@ -84,15 +81,8 @@ public class PharmacieService {
 
     public PharmacieResponse changerStatut(Long id, StatutPharmacie statut) {
         Pharmacie pharmacie = charger(id);
-        StatutPharmacie ancienStatut = pharmacie.getStatut();
         pharmacie.setStatut(statut);
-        Pharmacie enregistree = pharmacieRepository.save(pharmacie);
-
-        if (ancienStatut != statut) {
-            publicateurEvenements.publierStatutPharmacieModifie(new StatutPharmacieModifie(
-                    enregistree.getId(), enregistree.getNom(), ancienStatut, statut, LocalDateTime.now()));
-        }
-        return PharmacieResponse.from(enregistree);
+        return PharmacieResponse.from(pharmacieRepository.save(pharmacie));
     }
 
     @Transactional(readOnly = true)
