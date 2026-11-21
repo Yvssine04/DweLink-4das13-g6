@@ -1,0 +1,1362 @@
+{
+  "info": {
+    "_postman_id": "59f50a43-0490-47df-9f98-dcf16f3bc553",
+    "name": "DweLink - pharmacy-service (Eureka)",
+    "description": "Test de pharmacy-service enregistré dans Eureka : OpenFeign + Resilience4j vers user-service (résolu par son nom Eureka), règles métier, pannes.\n\nL'utilisateur courant est passé dans l'en-tête X-Utilisateur-Id.\nPrérequis : eureka-server (8761), user-service et pharmacy-service (8082) lancés.\nAdapter les variables pharmacienId (PHARMACIEN au compte ACTIF), patientId (PATIENT) et inconnuId (id absent) aux données de user-service.\nDossiers 0 à 5 : lancer avec le Runner, dans l'ordre. Dossier 6 : manuel.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Santé",
+      "item": [
+        {
+          "name": "Santé du service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. En-tête X-Utilisateur-Id",
+      "description": "L'utilisateur courant est transmis par l'en-tête X-Utilisateur-Id.",
+      "item": [
+        {
+          "name": "GET liste sans en-tête → 200 (public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies?ville=Tunis",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "ville",
+                  "value": "Tunis"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST sans X-Utilisateur-Id → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Message en-tête manquant\", () => pm.expect(pm.response.json().message).to.include(\"X-Utilisateur-Id\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Test Complet\",\n  \"numeroAutorisation\": \"AUT-SECU\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.8,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 333 333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. OpenFeign + Resilience4j (appel à user-service)",
+      "item": [
+        {
+          "name": "Créer une pharmacie (pharmacien) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Test Complet\",\n  \"numeroAutorisation\": \"{{numero}}\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 333 333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"numero\", \"AUT-\" + Date.now()); // numéro unique à chaque exécution"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"Statut EN_ATTENTE\", () => pm.expect(p.statut).to.eql(\"EN_ATTENTE\"));",
+                  "pm.collectionVariables.set(\"pharmacieId\", p.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Créer avec le patient (user-service dit PATIENT) → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{patientId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Patient\",\n  \"numeroAutorisation\": \"{{numero}}-P\",\n  \"adresse\": \"1 rue de Rome\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 444 444\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Créer avec un utilisateur inconnu de user-service → 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{inconnuId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Admin\",\n  \"numeroAutorisation\": \"{{numero}}-A\",\n  \"adresse\": \"1 rue de Rome\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 555 555\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Pharmacie, statut, recherche",
+      "item": [
+        {
+          "name": "Détail → EN_ATTENTE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"EN_ATTENTE\", () => pm.expect(pm.response.json().statut).to.eql(\"EN_ATTENTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recherche par ville → absente (pas encore VALIDEE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies?ville=Tunis",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "ville",
+                  "value": "Tunis"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "pm.test(\"Pharmacie absente\", () => pm.expect(pm.response.json().map(p => p.id)).to.not.include(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Valider la pharmacie → 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "statut"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"VALIDEE\", () => pm.expect(pm.response.json().statut).to.eql(\"VALIDEE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Valider une 2e fois → 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/statut",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "statut"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"VALIDEE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recherche par ville → présente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies?ville=Tunis",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ],
+              "query": [
+                {
+                  "key": "ville",
+                  "value": "Tunis"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "pm.test(\"Pharmacie présente\", () => pm.expect(pm.response.json().map(p => p.id)).to.include(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pharmacies proches → présente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.80&lng=10.18&rayonKm=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "proches"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "36.80"
+                },
+                {
+                  "key": "lng",
+                  "value": "10.18"
+                },
+                {
+                  "key": "rayonKm",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const id = Number(pm.collectionVariables.get(\"pharmacieId\"));",
+                  "pm.test(\"Pharmacie présente\", () => pm.expect(pm.response.json().map(p => p.id)).to.include(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pharmacies proches sans lng → 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/proches?lat=36.80",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "proches"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "36.80"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modifier la pharmacie (titulaire) → 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Test Complet\",\n  \"numeroAutorisation\": \"{{numero}}\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 999 999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modifier avec un nom vide → 400 (validation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"\",\n  \"numeroAutorisation\": \"{{numero}}\",\n  \"adresse\": \"10 avenue Habib Bourguiba\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 999 999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pharmacie inexistante → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Horaires et gardes",
+      "item": [
+        {
+          "name": "Définir les horaires → 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "horaires"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"jour\": \"LUNDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"20:00\"\n  },\n  {\n    \"jour\": \"SAMEDI\",\n    \"heureOuverture\": \"08:00\",\n    \"heureFermeture\": \"13:00\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Horaire fermeture avant ouverture → 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/horaires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "horaires"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"jour\": \"MARDI\",\n    \"heureOuverture\": \"20:00\",\n    \"heureFermeture\": \"08:00\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ajouter une garde → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-12-01T20:00:00\",\n  \"fin\": \"2026-12-02T08:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Garde qui chevauche → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-12-02T06:00:00\",\n  \"fin\": \"2026-12-02T10:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ajouter une garde avec le patient → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{patientId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/gardes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "gardes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debut\": \"2026-12-05T20:00:00\",\n  \"fin\": \"2026-12-06T08:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Membres",
+      "item": [
+        {
+          "name": "Demander à rejoindre (patient) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{patientId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "const m = pm.response.json();",
+                  "pm.test(\"EN_ATTENTE\", () => pm.expect(m.statut).to.eql(\"EN_ATTENTE\"));",
+                  "pm.collectionVariables.set(\"membreId\", m.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Le patient s'accepte lui-même → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{patientId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "{{membreId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"ACTIF\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lister les membres (titulaire) → 2 membres",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"2 membres\", () => pm.expect(pm.response.json().length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accepter le membre (titulaire) → 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{membreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "{{membreId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut\": \"ACTIF\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ACTIF\", () => pm.expect(pm.response.json().statut).to.eql(\"ACTIF\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vérifier l'appartenance du patient → 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/verifier?utilisateurId={{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "verifier"
+              ],
+              "query": [
+                {
+                  "key": "utilisateurId",
+                  "value": "{{patientId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Redemander alors qu'il est déjà membre → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{patientId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trouver l'id du membre titulaire",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres"
+              ]
+            },
+            "description": "Récupère l'id du membre titulaire pour la requête suivante."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const t = pm.response.json().find(m => m.role === \"TITULAIRE\");",
+                  "pm.collectionVariables.set(\"titulaireMembreId\", t.id);",
+                  "pm.test(\"Titulaire trouvé\", () => pm.expect(t).to.not.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE du titulaire → 409",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies/{{pharmacieId}}/membres/{{titulaireMembreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies",
+                "{{pharmacieId}}",
+                "membres",
+                "{{titulaireMembreId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Panne de user-service (manuel)",
+      "item": [
+        {
+          "name": "Resilience4j : user-service arrêté → 503",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{pharmacienId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pharmacies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pharmacies"
+              ]
+            },
+            "description": "AVANT : docker stop faux-user-service. APRÈS : docker start faux-user-service, puis attendre 10 s.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Pharmacie Panne\",\n  \"numeroAutorisation\": \"{{numero}}-503\",\n  \"adresse\": \"1 rue de Rome\",\n  \"ville\": \"Tunis\",\n  \"latitude\": 36.80,\n  \"longitude\": 10.18,\n  \"telephone\": \"+216 71 666 666\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 503\", () => pm.response.to.have.status(503));",
+                  "pm.test(\"Réponse rapide (< 4 s)\", () => pm.expect(pm.response.responseTime).to.be.below(4000));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "À lancer à la main, avec user-service arrêté (ou non lancé). Ne pas mettre dans le Runner automatique."
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "pharmacieId",
+      "value": ""
+    },
+    {
+      "key": "membreId",
+      "value": ""
+    },
+    {
+      "key": "titulaireMembreId",
+      "value": ""
+    },
+    {
+      "key": "numero",
+      "value": ""
+    },
+    {
+      "key": "pharmacienId",
+      "value": "100"
+    },
+    {
+      "key": "patientId",
+      "value": "102"
+    },
+    {
+      "key": "inconnuId",
+      "value": "900"
+    }
+  ]
+}
