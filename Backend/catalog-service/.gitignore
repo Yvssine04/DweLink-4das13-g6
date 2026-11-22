@@ -35,3 +35,4 @@ build/
 
 uploads/
 src/main/resources/application.properties
+.idea/

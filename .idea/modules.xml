@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ProjectModuleManager">
-    <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/DweLink-4das13-g6.iml" filepath="$PROJECT_DIR$/.idea/DweLink-4das13-g6.iml" />
-      <module fileurl="file://$PROJECT_DIR$/Backend/catalog-service/catalog-service.iml" filepath="$PROJECT_DIR$/Backend/catalog-service/catalog-service.iml" />
-    </modules>
-  </component>
-</project>
