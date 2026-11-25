@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import tn.dwelink.inventoryservice.dto.*;
 import tn.dwelink.inventoryservice.service.ArticleStockService;
+import tn.dwelink.inventoryservice.service.LotService;
 
 @RestController
 @RequestMapping("/api/articles-stock")
@@ -14,6 +15,7 @@ import tn.dwelink.inventoryservice.service.ArticleStockService;
 public class ArticleStockController {
 
     private final ArticleStockService articleService;
+    private final LotService lotService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -41,5 +43,10 @@ public class ArticleStockController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void supprimer(@PathVariable String id) {
         articleService.supprimer(id);
+    }
+    @PostMapping("/{id}/lots")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LotResponse ajouterLot(@PathVariable String id, @Valid @RequestBody LotRequest req) {
+        return lotService.ajouter(id, req);
     }
 }
