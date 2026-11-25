@@ -29,6 +29,7 @@
         <module>user-service</module>
         <module>pharmacy-service</module>
         <module>catalog-service</module>
+        <module>notification-service</module>
     </modules>
 
     <dependencyManagement>
