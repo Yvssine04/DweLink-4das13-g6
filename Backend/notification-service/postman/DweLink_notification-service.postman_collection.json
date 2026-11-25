@@ -1,0 +1,737 @@
+{
+  "info": {
+    "_postman_id": "3bd54eac-5743-4a49-a003-03d551b56c21",
+    "name": "DweLink - notification-service (Eureka)",
+    "description": "Test de notification-service (MongoDB) enregistré dans Eureka.\n\nL'utilisateur courant est passé dans l'en-tête X-Utilisateur-Id.\nPrérequis : MongoDB (27017), eureka-server (8761) et notification-service (8087) lancés.\nDossiers 0 à 4 : lancer avec le Runner, dans l'ordre (le POST du dossier 1 remplit notificationId).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Santé",
+      "item": [
+        {
+          "name": "Santé du service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Création (TEMPORAIRE avant RabbitMQ)",
+      "item": [
+        {
+          "name": "Créer une notification pour l'utilisateur",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinataireId\": 1,\n  \"type\": \"RESERVATION\",\n  \"titre\": \"Réservation confirmée\",\n  \"message\": \"Votre réservation est prête à être retirée.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Non lue, EN_ATTENTE\", () => { pm.expect(j.lue).to.eql(false); pm.expect(j.statutEnvoi).to.eql(\"EN_ATTENTE\"); });",
+                  "pm.collectionVariables.set(\"notificationId\", j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Créer une notification pour un autre utilisateur",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinataireId\": 2,\n  \"type\": \"GARDE\",\n  \"titre\": \"Pharmacie de garde\",\n  \"message\": \"Votre pharmacie est de garde ce soir.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"notificationAutreId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Créer - données invalides (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinataireId\": null,\n  \"type\": \"\",\n  \"titre\": \"\",\n  \"message\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Format {code, message, date}\", () => { pm.expect(pm.response.json()).to.include.keys(\"code\", \"message\", \"date\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Consultation",
+      "item": [
+        {
+          "name": "Mes notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Liste\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mes notifications non lues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?lue=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "lue",
+                  "value": "false"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Toutes non lues\", () => pm.response.json().forEach(n => pm.expect(n.lue).to.eql(false)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mes notifications lues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?lue=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "lue",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nombre de non lues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/non-lues/nombre",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "non-lues",
+                "nombre"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Champ nombre\", () => pm.expect(pm.response.json().nombre).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sans en-tête X-Utilisateur-Id (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Format {code, message, date}\", () => { pm.expect(pm.response.json()).to.include.keys(\"code\", \"message\", \"date\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Lecture",
+      "item": [
+        {
+          "name": "Marquer comme lue",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/lue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}",
+                "lue"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"lue = true\", () => pm.expect(pm.response.json().lue).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marquer comme lue - notification d'un autre (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationAutreId}}/lue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationAutreId}}",
+                "lue"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Format {code, message, date}\", () => { pm.expect(pm.response.json()).to.include.keys(\"code\", \"message\", \"date\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marquer comme lue - inexistante (404)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/000000000000000000000000/lue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "000000000000000000000000",
+                "lue"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Format {code, message, date}\", () => { pm.expect(pm.response.json()).to.include.keys(\"code\", \"message\", \"date\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tout marquer comme lu",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/tout-lu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "tout-lu"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nombre de non lues après tout-lu",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/non-lues/nombre",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "non-lues",
+                "nombre"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"nombre = 0\", () => pm.expect(pm.response.json().nombre).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Préférences",
+      "item": [
+        {
+          "name": "Préférences (défaut si absentes)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{autreUtilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modifier les préférences (crée si absentes)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationActivee\": true,\n  \"emailActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"emailActive = false\", () => pm.expect(pm.response.json().emailActive).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mes préférences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"emailActive = false\", () => pm.expect(pm.response.json().emailActive).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modifier - champ manquant (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Utilisateur-Id",
+                "value": "{{utilisateurId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationActivee\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Format {code, message, date}\", () => { pm.expect(pm.response.json()).to.include.keys(\"code\", \"message\", \"date\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8087"
+    },
+    {
+      "key": "utilisateurId",
+      "value": "1"
+    },
+    {
+      "key": "autreUtilisateurId",
+      "value": "2"
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "notificationAutreId",
+      "value": ""
+    }
+  ]
+}
