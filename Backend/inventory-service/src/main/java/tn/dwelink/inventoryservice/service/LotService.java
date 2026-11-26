@@ -15,12 +15,19 @@ import tn.dwelink.inventoryservice.exception.RequeteInvalideException;
 import tn.dwelink.inventoryservice.exception.RessourceIntrouvableException;
 import tn.dwelink.inventoryservice.repository.ArticleStockRepository;
 
+
+import java.time.LocalDateTime;
+import tn.dwelink.inventoryservice.document.MouvementStock;
+import tn.dwelink.inventoryservice.enums.TypeMouvement;
+import tn.dwelink.inventoryservice.repository.MouvementStockRepository;
+
 @Service
 @RequiredArgsConstructor
 public class LotService {
 
     private final ArticleStockService articleService;
     private final ArticleStockRepository articleRepository;
+    private final MouvementStockRepository mouvementRepository;
 
     public LotResponse ajouter(String articleId, LotRequest req) {
         ArticleStock article = articleService.charger(articleId);
@@ -39,7 +46,16 @@ public class LotService {
                 .origine(req.origine() != null ? req.origine() : OrigineLot.ACHAT)
                 .build();
         article.getLots().add(lot);
-        articleRepository.save(article);   // on enregistre l'article entier, lots compris
+        articleRepository.save(article);// on enregistre l'article entier, lots compris
+        mouvementRepository.save(MouvementStock.builder()
+                .articleStockId(article.getId())
+                .lotId(lot.getId())
+                .numeroLot(lot.getNumeroLot())
+                .type(TypeMouvement.ENTREE)
+                .quantite(lot.getQuantite())
+                .motif("Réception du lot")
+                .dateMouvement(LocalDateTime.now())
+                .build());
         return LotResponse.from(lot);
     }
 
