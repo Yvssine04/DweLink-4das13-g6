@@ -1,0 +1,18 @@
+# Copier ce fichier en application.properties (fichier local, non versionné).
+spring.application.name=notification-service
+
+server.port=8087
+
+# MongoDB (Spring Boot 4 : spring.mongodb.uri remplace spring.data.mongodb.uri)
+spring.mongodb.uri=mongodb://localhost:27017/notification_db
+# Crée les index déclarés par @Indexed (désactivé par défaut dans Spring Data MongoDB)
+spring.data.mongodb.auto-index-creation=true
+
+# Actuator
+management.endpoints.web.exposure.include=health
+
+# Eureka (serveur de découverte)
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+eureka.instance.prefer-ip-address=true

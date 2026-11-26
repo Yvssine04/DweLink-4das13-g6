@@ -29,7 +29,6 @@
         <module>user-service</module>
         <module>pharmacy-service</module>
         <module>catalog-service</module>
-        <module>inventory-service</module>
     </modules>
 
     <dependencyManagement>
