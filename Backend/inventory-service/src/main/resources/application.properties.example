@@ -1,13 +1,13 @@
 spring.application.name=inventory-service
 server.port=8084
 
-# MongoDB : la base stock_db sera créée toute seule à la première écriture
+# MongoDB : la base stock_db sera crÃ©Ã©e toute seule Ã  la premiÃ¨re Ã©criture
 spring.mongodb.uri=mongodb://localhost:27017/stock_db
 spring.data.mongodb.auto-index-creation=true
 
 management.endpoints.web.exposure.include=health
 
-# Eureka lancé
+# Eureka lancÃ©
 eureka.client.service-url.defaultZone=http://localhost:8761/eureka
 eureka.client.register-with-eureka=true
 eureka.client.fetch-registry=true

@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+### VS Code ###
+.vscode/
+
+### Configuration locale (voir application.properties.example) ###
+src/main/resources/application.properties
