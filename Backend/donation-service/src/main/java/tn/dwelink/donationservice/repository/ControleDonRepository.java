@@ -1,7 +1,7 @@
-package tn.esprit.donationservice.repository;
+package tn.dwelink.donationservice.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import tn.esprit.donationservice.entity.ControleDon;
+import tn.dwelink.donationservice.entity.ControleDon;
 
 public interface ControleDonRepository extends JpaRepository<ControleDon, Long> {
 }

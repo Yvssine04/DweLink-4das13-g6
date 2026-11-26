@@ -1,4 +1,4 @@
-package tn.esprit.donationservice.entity;
+package tn.dwelink.donationservice.entity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -16,7 +16,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import tn.esprit.donationservice.enums.StatutDon;
+import tn.dwelink.donationservice.enums.StatutDon;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

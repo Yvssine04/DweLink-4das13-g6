@@ -1,6 +1,6 @@
-package tn.esprit.donationservice.service;
+package tn.dwelink.donationservice.service;
 
-import tn.esprit.donationservice.entity.RemiseSolidaire;
+import tn.dwelink.donationservice.entity.RemiseSolidaire;
 
 import java.util.List;
 

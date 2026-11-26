@@ -1,10 +1,10 @@
-package tn.esprit.donationservice.repository;
+package tn.dwelink.donationservice.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import tn.esprit.donationservice.entity.Don;
-import tn.esprit.donationservice.enums.StatutDon;
+import tn.dwelink.donationservice.entity.Don;
+import tn.dwelink.donationservice.enums.StatutDon;
 
 import java.util.List;
 

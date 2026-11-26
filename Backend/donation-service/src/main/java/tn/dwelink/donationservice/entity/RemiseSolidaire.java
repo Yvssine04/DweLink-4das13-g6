@@ -1,4 +1,4 @@
-package tn.esprit.donationservice.entity;
+package tn.dwelink.donationservice.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Entity;

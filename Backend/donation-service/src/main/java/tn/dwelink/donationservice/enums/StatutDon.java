@@ -1,4 +1,4 @@
-package tn.esprit.donationservice.enums;
+package tn.dwelink.donationservice.enums;
 
 public enum StatutDon {
     EN_ATTENTE,

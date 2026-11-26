@@ -1,4 +1,4 @@
-package tn.esprit.donationservice.service;
+package tn.dwelink.donationservice.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -6,11 +6,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import tn.esprit.donationservice.entity.ControleDon;
-import tn.esprit.donationservice.entity.Don;
-import tn.esprit.donationservice.entity.RemiseSolidaire;
-import tn.esprit.donationservice.enums.StatutDon;
-import tn.esprit.donationservice.repository.DonRepository;
+import tn.dwelink.donationservice.entity.ControleDon;
+import tn.dwelink.donationservice.entity.Don;
+import tn.dwelink.donationservice.entity.RemiseSolidaire;
+import tn.dwelink.donationservice.enums.StatutDon;
+import tn.dwelink.donationservice.repository.DonRepository;
 
 import java.util.List;
 
@@ -90,7 +90,7 @@ public class DonServiceImpl implements IDonService {
     public Don prendreDecision(Long id, StatutDon statut) {
         if (statut != StatutDon.ACCEPTE && statut != StatutDon.REFUSE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "La décision doit être ACCEPTE ou REFUSE");
+                    "La dÃ©cision doit Ãªtre ACCEPTE ou REFUSE");
         }
 
         Don don = retrieveDon(id);

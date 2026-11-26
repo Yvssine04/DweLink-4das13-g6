@@ -6,7 +6,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8085"
+      "value": "http://localhost:8086"
     }
   ],
   "item": [
@@ -31,16 +31,16 @@
             "url": "{{baseUrl}}/api/dons/1"
           }
         },
-        { "name": "Récupérer un don", "request": { "method": "GET", "url": "{{baseUrl}}/api/dons/1" } },
-        { "name": "Récupérer tous les dons", "request": { "method": "GET", "url": "{{baseUrl}}/api/dons" } },
+        { "name": "RÃ©cupÃ©rer un don", "request": { "method": "GET", "url": "{{baseUrl}}/api/dons/1" } },
+        { "name": "RÃ©cupÃ©rer tous les dons", "request": { "method": "GET", "url": "{{baseUrl}}/api/dons" } },
         { "name": "Supprimer un don", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/dons/1" } }
       ]
     },
     {
-      "name": "Contrôles de dons",
+      "name": "ContrÃ´les de dons",
       "item": [
         {
-          "name": "Ajouter un contrôle",
+          "name": "Ajouter un contrÃ´le",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -49,17 +49,17 @@
           }
         },
         {
-          "name": "Modifier un contrôle",
+          "name": "Modifier un contrÃ´le",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"pharmacienId\": 1,\n  \"emballageIntact\": false,\n  \"dateValide\": true,\n  \"accepte\": false,\n  \"motifRefus\": \"Emballage endommagé\",\n  \"don\": { \"id\": 1 }\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"pharmacienId\": 1,\n  \"emballageIntact\": false,\n  \"dateValide\": true,\n  \"accepte\": false,\n  \"motifRefus\": \"Emballage endommagÃ©\",\n  \"don\": { \"id\": 1 }\n}" },
             "url": "{{baseUrl}}/api/controles-dons/1"
           }
         },
-        { "name": "Récupérer un contrôle", "request": { "method": "GET", "url": "{{baseUrl}}/api/controles-dons/1" } },
-        { "name": "Récupérer tous les contrôles", "request": { "method": "GET", "url": "{{baseUrl}}/api/controles-dons" } },
-        { "name": "Supprimer un contrôle", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/controles-dons/1" } }
+        { "name": "RÃ©cupÃ©rer un contrÃ´le", "request": { "method": "GET", "url": "{{baseUrl}}/api/controles-dons/1" } },
+        { "name": "RÃ©cupÃ©rer tous les contrÃ´les", "request": { "method": "GET", "url": "{{baseUrl}}/api/controles-dons" } },
+        { "name": "Supprimer un contrÃ´le", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/controles-dons/1" } }
       ]
     },
     {
@@ -83,8 +83,8 @@
             "url": "{{baseUrl}}/api/remises-solidaires/1"
           }
         },
-        { "name": "Récupérer une remise", "request": { "method": "GET", "url": "{{baseUrl}}/api/remises-solidaires/1" } },
-        { "name": "Récupérer toutes les remises", "request": { "method": "GET", "url": "{{baseUrl}}/api/remises-solidaires" } },
+        { "name": "RÃ©cupÃ©rer une remise", "request": { "method": "GET", "url": "{{baseUrl}}/api/remises-solidaires/1" } },
+        { "name": "RÃ©cupÃ©rer toutes les remises", "request": { "method": "GET", "url": "{{baseUrl}}/api/remises-solidaires" } },
         { "name": "Supprimer une remise", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/remises-solidaires/1" } }
       ]
     }
