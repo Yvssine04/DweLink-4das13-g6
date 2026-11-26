@@ -1,0 +1,92 @@
+{
+  "info": {
+    "name": "DweLink - Donation Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8086"
+    }
+  ],
+  "item": [
+    {
+      "name": "Dons",
+      "item": [
+        {
+          "name": "Ajouter un don",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"donateurId\": 1,\n  \"pharmacieId\": 1,\n  \"medicamentId\": 1,\n  \"quantite\": 2,\n  \"datePeremption\": \"2027-06-30\",\n  \"statut\": \"EN_ATTENTE\"\n}" },
+            "url": "{{baseUrl}}/api/dons"
+          }
+        },
+        {
+          "name": "Modifier un don",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"donateurId\": 1,\n  \"pharmacieId\": 1,\n  \"medicamentId\": 1,\n  \"quantite\": 3,\n  \"datePeremption\": \"2027-06-30\",\n  \"statut\": \"ACCEPTE\"\n}" },
+            "url": "{{baseUrl}}/api/dons/1"
+          }
+        },
+        { "name": "RÃ©cupÃ©rer un don", "request": { "method": "GET", "url": "{{baseUrl}}/api/dons/1" } },
+        { "name": "RÃ©cupÃ©rer tous les dons", "request": { "method": "GET", "url": "{{baseUrl}}/api/dons" } },
+        { "name": "Supprimer un don", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/dons/1" } }
+      ]
+    },
+    {
+      "name": "ContrÃ´les de dons",
+      "item": [
+        {
+          "name": "Ajouter un contrÃ´le",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pharmacienId\": 1,\n  \"emballageIntact\": true,\n  \"dateValide\": true,\n  \"accepte\": true,\n  \"motifRefus\": null,\n  \"don\": { \"id\": 1 }\n}" },
+            "url": "{{baseUrl}}/api/controles-dons"
+          }
+        },
+        {
+          "name": "Modifier un contrÃ´le",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pharmacienId\": 1,\n  \"emballageIntact\": false,\n  \"dateValide\": true,\n  \"accepte\": false,\n  \"motifRefus\": \"Emballage endommagÃ©\",\n  \"don\": { \"id\": 1 }\n}" },
+            "url": "{{baseUrl}}/api/controles-dons/1"
+          }
+        },
+        { "name": "RÃ©cupÃ©rer un contrÃ´le", "request": { "method": "GET", "url": "{{baseUrl}}/api/controles-dons/1" } },
+        { "name": "RÃ©cupÃ©rer tous les contrÃ´les", "request": { "method": "GET", "url": "{{baseUrl}}/api/controles-dons" } },
+        { "name": "Supprimer un contrÃ´le", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/controles-dons/1" } }
+      ]
+    },
+    {
+      "name": "Remises solidaires",
+      "item": [
+        {
+          "name": "Ajouter une remise",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pharmacienId\": 1,\n  \"beneficiaireRef\": \"BENEF-001\",\n  \"quantite\": 1,\n  \"dateRemise\": \"2026-11-26\",\n  \"don\": { \"id\": 1 }\n}" },
+            "url": "{{baseUrl}}/api/remises-solidaires"
+          }
+        },
+        {
+          "name": "Modifier une remise",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pharmacienId\": 1,\n  \"beneficiaireRef\": \"BENEF-002\",\n  \"quantite\": 2,\n  \"dateRemise\": \"2026-11-26\",\n  \"don\": { \"id\": 1 }\n}" },
+            "url": "{{baseUrl}}/api/remises-solidaires/1"
+          }
+        },
+        { "name": "RÃ©cupÃ©rer une remise", "request": { "method": "GET", "url": "{{baseUrl}}/api/remises-solidaires/1" } },
+        { "name": "RÃ©cupÃ©rer toutes les remises", "request": { "method": "GET", "url": "{{baseUrl}}/api/remises-solidaires" } },
+        { "name": "Supprimer une remise", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/remises-solidaires/1" } }
+      ]
+    }
+  ]
+}
