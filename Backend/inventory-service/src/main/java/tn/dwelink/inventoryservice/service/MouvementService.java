@@ -18,6 +18,10 @@ import tn.dwelink.inventoryservice.exception.RequeteInvalideException;
 import tn.dwelink.inventoryservice.repository.ArticleStockRepository;
 import tn.dwelink.inventoryservice.repository.MouvementStockRepository;
 
+import java.time.LocalDateTime;
+import tn.dwelink.inventoryservice.exception.ConflitException;
+import tn.dwelink.inventoryservice.exception.RessourceIntrouvableException;
+
 @Service
 @RequiredArgsConstructor
 public class MouvementService {
@@ -72,7 +76,38 @@ public class MouvementService {
 
     // EXERCICE : à toi d'écrire le contenu (voir plus bas)
     public List<MouvementResponse> ajuster(String articleId, String lotId, int quantite, String motif) {
-        throw new RequeteInvalideException("Ajustement pas encore écrit");
+        if (lotId == null) {
+            throw new RequeteInvalideException("lotId est obligatoire pour un ajustement");
+        }
+        if (quantite == 0) {
+            throw new RequeteInvalideException("La quantité d'un ajustement ne peut pas être 0");
+        }
+        ArticleStock article = articleService.charger(articleId);
+
+        Lot lot = article.getLots().stream()
+                .filter(l -> l.getId().equals(lotId))
+                .findFirst()
+                .orElseThrow(() -> new RessourceIntrouvableException("Lot " + lotId + " introuvable dans cet article"));
+
+        int nouvelleQuantite = lot.getQuantite() + quantite;
+        if (nouvelleQuantite < lot.getQuantiteReservee()) {
+            throw new ConflitException("Ajustement impossible : il resterait " + nouvelleQuantite
+                    + " boîte(s) pour " + lot.getQuantiteReservee() + " réservée(s)");
+        }
+        lot.setQuantite(nouvelleQuantite);
+
+        MouvementStock mouvement = MouvementStock.builder()
+                .articleStockId(article.getId())
+                .lotId(lot.getId())
+                .numeroLot(lot.getNumeroLot())
+                .type(TypeMouvement.AJUSTEMENT)
+                .quantite(quantite)
+                .motif(motif)
+                .dateMouvement(LocalDateTime.now())
+                .build();
+
+        articleRepository.save(article);
+        return List.of(MouvementResponse.from(mouvementRepository.save(mouvement)));
     }
 
     public List<MouvementResponse> historique(String articleId) {
