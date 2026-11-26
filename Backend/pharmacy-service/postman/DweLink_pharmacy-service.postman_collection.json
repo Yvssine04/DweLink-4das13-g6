@@ -1,11 +1,241 @@
 {
   "info": {
-    "_postman_id": "59f50a43-0490-47df-9f98-dcf16f3bc553",
+    "_postman_id": "5a09e812-2000-4fd9-8320-08989468b223",
     "name": "DweLink - pharmacy-service (Eureka)",
-    "description": "Test de pharmacy-service enregistré dans Eureka : OpenFeign + Resilience4j vers user-service (résolu par son nom Eureka), règles métier, pannes.\n\nL'utilisateur courant est passé dans l'en-tête X-Utilisateur-Id.\nPrérequis : eureka-server (8761), user-service et pharmacy-service (8082) lancés.\nAdapter les variables pharmacienId (PHARMACIEN au compte ACTIF), patientId (PATIENT) et inconnuId (id absent) aux données de user-service.\nDossiers 0 à 5 : lancer avec le Runner, dans l'ordre. Dossier 6 : manuel.",
+    "description": "Test de pharmacy-service enregistré dans Eureka, avec le vrai user-service : OpenFeign + Resilience4j, règles métier, pannes.\n\nPrérequis : eureka-server (8761), user-service (8081) et pharmacy-service (8082) lancés.\nLancer avec le Runner les dossiers P puis 0 à 5, dans l'ordre (le dossier P crée les utilisateurs et remplit pharmacienId / patientId).\nDossier 6 : à lancer à la main, avec user-service arrêté.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "P. Préparation : créer les utilisateurs dans user-service",
+      "description": "Crée un admin, un pharmacien et un patient dans user-service (8081), puis l'admin approuve le pharmacien pour que son compte passe ACTIF. Les ids sont rangés dans les variables pharmacienId et patientId.",
+      "item": [
+        {
+          "name": "Inscrire un admin → 201",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"suffixe\", Date.now()); // emails uniques à chaque exécution"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"tokenAdmin\", pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{userUrl}}/api/auth/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin.{{suffixe}}@dwelink.tn\",\n  \"motDePasse\": \"secret123\",\n  \"prenom\": \"Admin\",\n  \"nom\": \"Test\",\n  \"role\": \"ADMINISTRATEUR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Inscrire un pharmacien → 201 (EN_ATTENTE_VALIDATION)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "const u = pm.response.json();",
+                  "pm.test(\"EN_ATTENTE_VALIDATION\", () => pm.expect(u.statut).to.eql(\"EN_ATTENTE_VALIDATION\"));",
+                  "pm.collectionVariables.set(\"pharmacienId\", u.id);",
+                  "pm.collectionVariables.set(\"tokenPharmacien\", u.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{userUrl}}/api/auth/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"pharmacien.{{suffixe}}@dwelink.tn\",\n  \"motDePasse\": \"secret123\",\n  \"prenom\": \"Yassine\",\n  \"nom\": \"Pharmacien\",\n  \"telephone\": \"+216 20 000 000\",\n  \"role\": \"PHARMACIEN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Inscrire un patient → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"patientId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{userUrl}}/api/auth/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient.{{suffixe}}@dwelink.tn\",\n  \"motDePasse\": \"secret123\",\n  \"prenom\": \"Ali\",\n  \"nom\": \"Patient\",\n  \"role\": \"PATIENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pharmacien : déposer sa demande → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"demandeId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPharmacien}}"
+              }
+            ],
+            "url": {
+              "raw": "{{userUrl}}/api/demandes-pharmacien"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroOrdre\": \"ORD-{{suffixe}}\",\n  \"diplome\": \"Doctorat en pharmacie\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Admin : approuver la demande → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"APPROUVEE\", () => pm.expect(pm.response.json().statut).to.eql(\"APPROUVEE\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{userUrl}}/api/demandes-pharmacien/{{demandeId}}/decision"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROUVEE\",\n  \"commentaire\": \"OK pour les tests\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Vérifier : pharmacien ACTIF (API interne) → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Code 200\", () => pm.response.to.have.status(200));",
+                  "const u = pm.response.json();",
+                  "pm.test(\"PHARMACIEN\", () => pm.expect(u.role).to.eql(\"PHARMACIEN\"));",
+                  "pm.test(\"ACTIF\", () => pm.expect(u.statut).to.eql(\"ACTIF\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{userUrl}}/api/utilisateurs/{{pharmacienId}}"
+            }
+          }
+        }
+      ]
+    },
     {
       "name": "0. Santé",
       "item": [
@@ -1327,6 +1557,10 @@
   ],
   "variable": [
     {
+      "key": "userUrl",
+      "value": "http://localhost:8081"
+    },
+    {
       "key": "baseUrl",
       "value": "http://localhost:8082"
     },
@@ -1348,15 +1582,31 @@
     },
     {
       "key": "pharmacienId",
-      "value": "100"
+      "value": ""
     },
     {
       "key": "patientId",
-      "value": "102"
+      "value": ""
     },
     {
       "key": "inconnuId",
-      "value": "900"
+      "value": "999999"
+    },
+    {
+      "key": "suffixe",
+      "value": ""
+    },
+    {
+      "key": "tokenAdmin",
+      "value": ""
+    },
+    {
+      "key": "tokenPharmacien",
+      "value": ""
+    },
+    {
+      "key": "demandeId",
+      "value": ""
     }
   ]
 }
