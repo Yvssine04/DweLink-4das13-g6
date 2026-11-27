@@ -1,21 +1,22 @@
 package tn.dwelink.catalogservice.service;
 
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 import tn.dwelink.catalogservice.dto.*;
 import tn.dwelink.catalogservice.entity.CompositionMedicament;
 import tn.dwelink.catalogservice.entity.Medicament;
 import tn.dwelink.catalogservice.entity.PrincipeActif;
 import tn.dwelink.catalogservice.enums.StatutMedicament;
+import tn.dwelink.catalogservice.exception.BadRequestException;
+import tn.dwelink.catalogservice.exception.ConflictException;
+import tn.dwelink.catalogservice.exception.FileStorageException;
+import tn.dwelink.catalogservice.exception.NotFoundException;
 import tn.dwelink.catalogservice.repository.MedicamentRepository;
 import tn.dwelink.catalogservice.repository.PrincipeActifRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,13 +26,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-
 @Service
 @RequiredArgsConstructor
 public class MedicamentService implements IMedicamentService {
 
     private final MedicamentRepository medicamentRepository;
     private final PrincipeActifRepository principeActifRepository;
+
     @Value("${app.upload-dir}")
     private String uploadDir;
 
@@ -40,12 +41,11 @@ public class MedicamentService implements IMedicamentService {
     public MedicamentResponse creer(MedicamentRequest request) {
         String code = request.codeBarres().trim();
         if (medicamentRepository.existsByCodeBarres(code)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Code-barres déjà utilisé");
+            throw new ConflictException("Code-barres déjà utilisé");
         }
 
         if (request.compositions() == null || request.compositions().isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Au moins une composition est obligatoire");
+            throw new BadRequestException("Au moins une composition est obligatoire");
         }
 
         Medicament medicament = new Medicament();
@@ -67,13 +67,11 @@ public class MedicamentService implements IMedicamentService {
 
         for (CompositionRequest cr : request.compositions()) {
             PrincipeActif principeActif = principeActifRepository.findById(cr.principeActifId())
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND, "Principe actif introuvable"));
+                    .orElseThrow(() -> new NotFoundException("Principe actif introuvable"));
 
             for (CompositionMedicament deja : medicament.getCompositions()) {
                 if (deja.getPrincipeActif().getId().equals(principeActif.getId())) {
-                    throw new ResponseStatusException(
-                            HttpStatus.CONFLICT, "Principe actif en double dans la composition");
+                    throw new ConflictException("Principe actif en double dans la composition");
                 }
             }
 
@@ -95,26 +93,6 @@ public class MedicamentService implements IMedicamentService {
     public MedicamentResponse consulter(Long id) {
         Medicament medicament = trouver(id);
         return versResponse(medicament);
-    }
-
-
-    private MedicamentResponse versResponse(Medicament m) {
-        List<CompositionResponse> compositions = new ArrayList<>();
-
-        for (CompositionMedicament c : m.getCompositions()) {
-            compositions.add(new CompositionResponse(
-                    c.getId(),
-                    c.getPrincipeActif().getId(),
-                    c.getPrincipeActif().getNomDci(),
-                    c.getDosage(),
-                    c.getUnite()));
-        }
-
-        return new MedicamentResponse(
-                m.getId(), m.getNomCommercial(), m.getCodeBarres(), m.getForme(),
-                m.getOrdonnanceRequise(), m.getConditionConservation(), m.getStupefiant(),
-                m.getStatut(), m.getDateRetrait(), m.getCategorie(), m.getLaboratoire(),m.getImageUrl(),
-                compositions);
     }
 
     @Override
@@ -151,19 +129,14 @@ public class MedicamentService implements IMedicamentService {
     @Override
     @Transactional
     public MedicamentResponse modifier(Long id, MedicamentUpdateRequest request) {
-
         Medicament medicament = trouver(id);
 
         if (medicament.getStatut() == StatutMedicament.RETIRE) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Un médicament retiré ne peut plus être modifié");
+            throw new ConflictException("Un médicament retiré ne peut plus être modifié");
         }
 
-        if (medicamentRepository.existsByCodeBarresAndIdNot(
-                request.codeBarres(), id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Code-barres déjà utilisé"
-            );
+        if (medicamentRepository.existsByCodeBarresAndIdNot(request.codeBarres(), id)) {
+            throw new ConflictException("Code-barres déjà utilisé");
         }
 
         medicament.setNomCommercial(request.nomCommercial());
@@ -175,15 +148,11 @@ public class MedicamentService implements IMedicamentService {
         if (request.ordonnanceRequise() != null) {
             medicament.setOrdonnanceRequise(request.ordonnanceRequise());
         }
-
         if (request.stupefiant() != null) {
             medicament.setStupefiant(request.stupefiant());
         }
-
         if (request.conditionConservation() != null) {
-            medicament.setConditionConservation(
-                    request.conditionConservation()
-            );
+            medicament.setConditionConservation(request.conditionConservation());
         }
 
         return versResponse(medicament);
@@ -195,14 +164,11 @@ public class MedicamentService implements IMedicamentService {
         Medicament medicament = trouver(id);
 
         PrincipeActif principeActif = principeActifRepository.findById(request.principeActifId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Principe actif introuvable"));
-
+                .orElseThrow(() -> new NotFoundException("Principe actif introuvable"));
 
         for (CompositionMedicament c : medicament.getCompositions()) {
             if (c.getPrincipeActif().getId().equals(principeActif.getId())) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "Ce principe actif est déjà dans la composition du médicament");
+                throw new ConflictException("Ce principe actif est déjà dans la composition du médicament");
             }
         }
 
@@ -229,11 +195,10 @@ public class MedicamentService implements IMedicamentService {
             }
         }
         if (aSupprimer == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Composition introuvable");
+            throw new NotFoundException("Composition introuvable");
         }
         if (medicament.getCompositions().size() == 1) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Impossible de supprimer la dernière composition");
+            throw new ConflictException("Impossible de supprimer la dernière composition");
         }
         medicament.getCompositions().remove(aSupprimer);
     }
@@ -253,6 +218,88 @@ public class MedicamentService implements IMedicamentService {
             }
         }
         return resultat;
+    }
+
+    @Override
+    @Transactional
+    public MedicamentResponse retirer(Long id) {
+        Medicament medicament = trouver(id);
+
+        if (medicament.getStatut() == StatutMedicament.RETIRE) {
+            throw new ConflictException("Médicament déjà retiré");
+        }
+        medicament.setStatut(StatutMedicament.RETIRE);
+        medicament.setDateRetrait(LocalDate.now());
+
+        // TODO : publier l'événement RabbitMQ "MedicamentRetire"
+        return versResponse(medicament);
+    }
+
+    @Override
+    @Transactional
+    public MedicamentResponse ajouterImage(Long id, MultipartFile file) {
+        Medicament medicament = trouver(id);
+
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("Fichier vide");
+        }
+
+        String type = file.getContentType();
+        String extension;
+        if ("image/jpeg".equals(type)) {
+            extension = ".jpg";
+        } else if ("image/png".equals(type)) {
+            extension = ".png";
+        } else if ("image/webp".equals(type)) {
+            extension = ".webp";
+        } else {
+            throw new BadRequestException("Image JPG, PNG ou WEBP uniquement");
+        }
+
+        String ancienne = medicament.getImageUrl();
+        String nomFichier = "medicament-" + id + "-" + System.currentTimeMillis() + extension;
+
+        try {
+            Path dossier = Path.of(uploadDir);
+            Files.createDirectories(dossier);
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, dossier.resolve(nomFichier));
+            }
+        } catch (IOException e) {
+            throw new FileStorageException("Échec de l'enregistrement de l'image", e);
+        }
+
+        medicament.setImageUrl(nomFichier);
+
+        // Supprimer l'ancienne image
+        if (ancienne != null) {
+            try {
+                Files.deleteIfExists(Path.of(uploadDir).resolve(ancienne));
+            } catch (IOException e) {
+                // ignoré
+            }
+        }
+
+        return versResponse(medicament);
+    }
+
+    @Override
+    @Transactional
+    public void supprimerImage(Long id) {
+        Medicament medicament = trouver(id);
+        if (medicament.getImageUrl() != null) {
+            try {
+                Files.deleteIfExists(Path.of(uploadDir).resolve(medicament.getImageUrl()));
+            } catch (IOException e) {
+                // ignoré
+            }
+            medicament.setImageUrl(null);
+        }
+    }
+
+    private Medicament trouver(Long id) {
+        return medicamentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Médicament introuvable"));
     }
 
     private boolean memeComposition(Medicament a, Medicament b) {
@@ -275,92 +322,22 @@ public class MedicamentService implements IMedicamentService {
         return true;
     }
 
-    @Override
-    @Transactional
-    public MedicamentResponse retirer(Long id) {
-        Medicament medicament = trouver(id);
+    private MedicamentResponse versResponse(Medicament m) {
+        List<CompositionResponse> compositions = new ArrayList<>();
 
-        if (medicament.getStatut() == StatutMedicament.RETIRE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Médicament déjà retiré");
+        for (CompositionMedicament c : m.getCompositions()) {
+            compositions.add(new CompositionResponse(
+                    c.getId(),
+                    c.getPrincipeActif().getId(),
+                    c.getPrincipeActif().getNomDci(),
+                    c.getDosage(),
+                    c.getUnite()));
         }
-        medicament.setStatut(StatutMedicament.RETIRE);
-        medicament.setDateRetrait(LocalDate.now());
 
-        // TODO  : publier l'événement RabbitMQ "MedicamentRetire"
-        return versResponse(medicament);
+        return new MedicamentResponse(
+                m.getId(), m.getNomCommercial(), m.getCodeBarres(), m.getForme(),
+                m.getOrdonnanceRequise(), m.getConditionConservation(), m.getStupefiant(),
+                m.getStatut(), m.getDateRetrait(), m.getCategorie(), m.getLaboratoire(),
+                m.getImageUrl(), compositions);
     }
-
-    @Override
-    @Transactional
-    public MedicamentResponse ajouterImage(Long id, MultipartFile file) {
-        Medicament medicament = trouver(id);
-
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Fichier vide");
-        }
-
-        String type = file.getContentType();
-        String extension;
-        if ("image/jpeg".equals(type)) {
-            extension = ".jpg";
-        } else if ("image/png".equals(type)) {
-            extension = ".png";
-        } else if ("image/webp".equals(type)) {
-            extension = ".webp";
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Image JPG, PNG ou WEBP uniquement");
-        }
-
-        String ancienne = medicament.getImageUrl();
-        String nomFichier = "medicament-" + id + "-" + System.currentTimeMillis() + extension;
-
-
-        try {
-            Path dossier = Path.of(uploadDir);
-            Files.createDirectories(dossier);
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, dossier.resolve(nomFichier));
-            }
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Échec de l'enregistrement de l'image");
-        }
-
-        medicament.setImageUrl(nomFichier);
-
-        // Supprimer l'ancienne image
-        if (ancienne != null) {
-            try {
-                Files.deleteIfExists(Path.of(uploadDir).resolve(ancienne));
-            } catch (IOException e) {
-
-            }
-        }
-
-        return versResponse(medicament);
-
-    }
-
-    @Override
-    @Transactional
-    public void supprimerImage(Long id) {
-        Medicament medicament = trouver(id);
-        if (medicament.getImageUrl() != null) {
-            try {
-                Files.deleteIfExists(Path.of(uploadDir).resolve(medicament.getImageUrl()));
-            } catch (IOException e) {
-                // ignoré
-            }
-            medicament.setImageUrl(null);
-        }
-    }
-
-    private Medicament trouver(Long id) {
-        return medicamentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Médicament introuvable"));
-    }
-
-
 }

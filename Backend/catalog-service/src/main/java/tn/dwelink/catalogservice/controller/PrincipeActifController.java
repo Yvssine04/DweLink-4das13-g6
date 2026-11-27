@@ -1,6 +1,8 @@
 package tn.dwelink.catalogservice.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import tn.dwelink.catalogservice.dto.PrincipeActifRequest;
 import tn.dwelink.catalogservice.dto.PrincipeActifResponse;
@@ -12,10 +14,12 @@ import java.util.List;
 @RequestMapping("/api/principes-actifs")
 @RequiredArgsConstructor
 public class PrincipeActifController {
+
     private final IPrincipeActifService iPrincipeActifService;
 
     @PostMapping
-    public PrincipeActifResponse creer(@RequestBody PrincipeActifRequest request) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public PrincipeActifResponse creer(@Valid @RequestBody PrincipeActifRequest request) {
         return iPrincipeActifService.creer(request);
     }
 

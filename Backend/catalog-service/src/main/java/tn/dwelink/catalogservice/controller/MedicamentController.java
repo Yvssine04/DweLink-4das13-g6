@@ -9,7 +9,7 @@ import tn.dwelink.catalogservice.dto.CompositionRequest;
 import tn.dwelink.catalogservice.dto.MedicamentRequest;
 import tn.dwelink.catalogservice.dto.MedicamentResponse;
 import tn.dwelink.catalogservice.dto.MedicamentUpdateRequest;
-import tn.dwelink.catalogservice.service.MedicamentService;
+import tn.dwelink.catalogservice.service.IMedicamentService;
 
 import java.util.List;
 
@@ -17,9 +17,11 @@ import java.util.List;
 @RequestMapping("/api/medicaments")
 @RequiredArgsConstructor
 public class MedicamentController {
-    private final MedicamentService service;
+
+    private final IMedicamentService service;
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public MedicamentResponse creer(@Valid @RequestBody MedicamentRequest request) {
         return service.creer(request);
     }
@@ -38,13 +40,14 @@ public class MedicamentController {
 
     @PutMapping("/{id}")
     public MedicamentResponse modifier(@PathVariable Long id,
-                                       @RequestBody MedicamentUpdateRequest request) {
+                                       @Valid @RequestBody MedicamentUpdateRequest request) {
         return service.modifier(id, request);
     }
 
     @PostMapping("/{id}/compositions")
+    @ResponseStatus(HttpStatus.CREATED)
     public MedicamentResponse ajouterComposition(@PathVariable Long id,
-                                                 @RequestBody CompositionRequest request) {
+                                                 @Valid @RequestBody CompositionRequest request) {
         return service.ajouterComposition(id, request);
     }
 
