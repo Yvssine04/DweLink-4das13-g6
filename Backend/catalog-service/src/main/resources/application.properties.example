@@ -25,24 +25,19 @@ eureka.instance.prefer-ip-address=true
 
 
 # Actuator
-# Exposer les endpoints health, info et metrics (seul health l'est par défaut)
+# Expose health, info and metrics (only health is exposed by default)
 management.endpoints.web.exposure.include=health,info,metrics
 
-# Afficher le détail des composants dans /health (db, diskSpace, ping…)
+# Show component details in /health (db, diskSpace, ping)
 management.endpoint.health.show-details=always
 
-# Variante : afficher les composants sans leurs détails
-#management.endpoint.health.show-components=always
-
-# Transmettre à Eureka le statut de /health (Job passe DOWN si la base tombe)
+# Send the /health status to Eureka (service goes DOWN if the database is down)
 eureka.client.healthcheck.enabled=true
 
-# Publier les propriétés info.* dans /actuator/info (désactivé par défaut)
+# Publish info.* properties in /actuator/info (disabled by default)
 management.info.env.enabled=true
 
-# Contenu affiché par /actuator/info
+# Content shown by /actuator/info
 info.app.name=catalog-service
 info.app.version=1.0.0
-info.app.description=Microservice du catalogue des médicaments
-
-
+info.app.description=Microservice du catalogue des medicaments
