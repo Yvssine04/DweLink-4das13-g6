@@ -33,6 +33,7 @@
         <module>reservation-service</module>
         <module>donation-service</module>
         <module>inventory-service</module>
+        <module>Gateway</module>
     </modules>
 
     <dependencyManagement>

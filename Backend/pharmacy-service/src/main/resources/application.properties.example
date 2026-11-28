@@ -14,7 +14,22 @@ spring.jpa.open-in-view=false
 spring.jpa.show-sql=true
 
 # Actuator
-management.endpoints.web.exposure.include=health
+# Expose health, info et metrics (seul health est exposé par défaut)
+management.endpoints.web.exposure.include=health,info,metrics
+
+# Affiche le détail des composants dans /health (db, diskSpace, ping)
+management.endpoint.health.show-details=always
+
+# Envoie le statut /health à Eureka (le service passe DOWN si la base est DOWN)
+eureka.client.healthcheck.enabled=true
+
+# Publie les propriétés info.* dans /actuator/info (désactivé par défaut)
+management.info.env.enabled=true
+
+# Contenu affiché par /actuator/info
+info.app.name=pharmacy-service
+info.app.version=1.0.0
+info.app.description=Microservice de gestion des pharmacies
 
 # Eureka (serveur de découverte)
 eureka.client.service-url.defaultZone=http://localhost:8761/eureka
